@@ -278,6 +278,8 @@ th{background:var(--navy);color:#fff;font-family:var(--display);font-size:13px;l
 
 .linkbtn{background:none;border:none;padding:0;color:var(--blue);font-weight:800;text-decoration:underline;cursor:pointer;font:inherit;text-align:left}
 .bilan td{vertical-align:middle}
+.qrbox img.qrlogo{width:22%;height:22%;min-width:34px;min-height:34px;display:block}
+.qrbox{display:inline-block;line-height:0}
 
 </style>
 <header class="top"><div class="top-in">
@@ -3522,7 +3524,7 @@ function uid(){if(!DB.uid){DB.uid=Math.random().toString(36).slice(2,10)+Date.no
 function track(o){
   if(!trackOn()||!DB.profil)return;
   const P=DB.profil;DB.queue=DB.queue||[];
-  DB.queue.push(Object.assign({t:Date.now(),uid:uid(),prenom:P.prenom,nom:P.nom,niveau:P.niveau,classe:P.classe||P.niveau},o));
+  DB.queue.push(Object.assign({t:Date.now(),uid:uid(),prenom:P.prenom,nom:P.nom,pseudo:P.pseudo||'',niveau:P.niveau,classe:P.classe||P.niveau},o));
   if(DB.queue.length>400)DB.queue.splice(0,DB.queue.length-400);
   save();flushQueue();
 }
@@ -3536,12 +3538,21 @@ async function flushQueue(){
   }catch(e){flushing=false;return}
   flushing=false;if(DB.queue.length)setTimeout(flushQueue,800);
 }
-window.addEventListener('online',flushQueue);
+async function registerPseudo(P,pin){
+  try{
+    const r=await fetch(TRACK_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'inscrire',pseudo:P.pseudo,pin:pin||P.pinTmp||'',prenom:P.prenom,nom:P.nom,niveau:P.niveau,classe:P.classe,uid:uid()})});
+    return await r.json();
+  }catch(e){return null}
+}
+async function retryPseudo(){const P=DB.profil;if(!trackOn()||!P||P.ok||!P.pseudo||!P.pinTmp)return;
+  const r=await registerPseudo(P,P.pinTmp);if(r&&r.ok){P.ok=true;delete P.pinTmp;save()}else if(r&&!r.ok){P.ok=false;P.pseudo='';delete P.pinTmp;save();render();toast("Ton pseudo est déjà pris : choisis-en un autre.")}}
+window.addEventListener('online',()=>{flushQueue();retryPseudo()});
+setTimeout(retryPseudo,2500);
 setTimeout(flushQueue,1500);
 
 /* ---- espace professeur ---- */
 const PR={rows:null,err:'',loading:false,cl:'',eleve:null,feuille:''};
-const COLS=["Date","Heure","Élève","Prénom","Nom","Niveau","Classe","Type","Chapitre","Code","Note","Sur","Note /20","Durée (min)","Tentative","Compétences à revoir","Identifiant appareil"];
+const COLS=["Date","Heure","Élève","Prénom","Nom","Niveau","Classe","Type","Chapitre","Code","Note","Sur","Note /20","Durée (min)","Tentative","Compétences à revoir","Identifiant appareil","Pseudo"];
 function profCode(){try{return localStorage.getItem('pdm_prof_code')||''}catch(e){return ''}}
 function loadProf(code,remember){
   if(!trackOn()){PR.err="Le suivi n'est pas encore branché : l'adresse du script Google manque.";render();return}
@@ -3574,17 +3585,17 @@ function profHTML(){
       <button class="btn ghost" data-act="home">Retour à l'accueil</button>`}
   const rows=PR.rows,classes=[...new Set(rows.map(r=>r.Classe))].sort();
   const R=PR.cl?rows.filter(r=>r.Classe===PR.cl):rows;
-  if(PR.eleve)return profEleveHTML(R.filter(r=>r['Élève']===PR.eleve));
+  if(PR.eleve)return profEleveHTML(R.filter(r=>(r.Pseudo?r['Élève']+' · @'+r.Pseudo:r['Élève'])===PR.eleve));
   const isEv=r=>/valuation/.test(r.Type),now=Date.now();
-  const byE={};R.forEach(r=>{(byE[r['Élève']]=byE[r['Élève']]||[]).push(r)});
+  const keyOf=r=>r.Pseudo?r['Élève']+' · @'+r.Pseudo:r['Élève'];R.forEach(r=>r.K=keyOf(r));const byE={};R.forEach(r=>{(byE[r.K]=byE[r.K]||[]).push(r)});
   const el=Object.entries(byE).map(([n,l])=>{const ev=l.filter(isEv),qz=l.filter(r=>r.Type==='Quiz');
     const lastT=Math.max(...l.map(r=>r.ts));
     const bestByChap={};ev.forEach(r=>{bestByChap[r.Chapitre]=Math.max(bestByChap[r.Chapitre]||0,r.n20)});
     const faibles=Object.entries(bestByChap).filter(([c,v])=>v<10).map(([c])=>c);
-    return{n,classe:l[0].Classe,nb:l.length,ev:avg(ev.map(r=>r.n20)),qz:avg(qz.map(r=>r.n20)),last:l.reduce((a,b)=>b.ts>=a.ts?b:a).Date,lastT,faibles}}).sort((a,b)=>a.n.localeCompare(b.n));
-  const evAll=R.filter(isEv),moy=avg(evAll.map(r=>r.n20)),diff=el.filter(e=>e.ev!==null&&e.ev<10),inact=el.filter(e=>now-e.lastT>14*864e5);
+    return{n,uids:new Set(l.map(r=>r['Identifiant appareil'])).size,classe:l[0].Classe,nb:l.length,ev:avg(ev.map(r=>r.n20)),qz:avg(qz.map(r=>r.n20)),last:l.reduce((a,b)=>b.ts>=a.ts?b:a).Date,lastT,faibles}}).sort((a,b)=>a.n.localeCompare(b.n));
+  const homo=el.filter(e=>e.uids>1&&!/ · @/.test(e.n)),evAll=R.filter(isEv),moy=avg(evAll.map(r=>r.n20)),diff=el.filter(e=>e.ev!==null&&e.ev<10),inact=el.filter(e=>now-e.lastT>14*864e5);
   const byC={};evAll.forEach(r=>{(byC[r.Chapitre]=byC[r.Chapitre]||[]).push(r)});
-  const chaps=Object.entries(byC).map(([c,l])=>{const best={};l.forEach(r=>{best[r['Élève']]=Math.max(best[r['Élève']]||0,r.n20)});const v=Object.values(best);
+  const chaps=Object.entries(byC).map(([c,l])=>{const best={};l.forEach(r=>{best[r.K]=Math.max(best[r.K]||0,r.n20)});const v=Object.values(best);
     return{c,nb:v.length,m:avg(v),ok:Math.round(v.filter(x=>x>=10).length/v.length*100)}}).sort((a,b)=>a.c.localeCompare(b.c));
   return `<div class="chap-head"><p class="eyebrow">Espace professeur · ${rows.length} résultats reçus</p><h1>Suivi des élèves</h1></div>
   <div class="skills">${['',...classes].map(c=>`<button class="skill ${PR.cl===c?'on':''}" data-act="prof-cl" data-c="${esc(c)}">${c||'Toutes les classes'}</button>`).join('')}</div>
@@ -3594,8 +3605,9 @@ function profHTML(){
     <article class="card center" style="display:flex;flex-direction:column;gap:4px"><p class="eyebrow">Moyenne /20</p><p class="big">${fmt(moy)}</p></article>
     <article class="card center" style="display:flex;flex-direction:column;gap:4px"><p class="eyebrow">Moins de 10</p><p class="big" style="color:var(--red)">${diff.length}</p></article>
   </section>
-  ${diff.length||inact.length?`<section class="card" style="display:flex;flex-direction:column;gap:8px"><p class="eyebrow">À surveiller</p>
+  ${diff.length||inact.length||homo.length?`<section class="card" style="display:flex;flex-direction:column;gap:8px"><p class="eyebrow">À surveiller</p>
     ${diff.length?`<p><b>En difficulté (moyenne &lt; 10) :</b> ${diff.map(e=>esc(e.n)).join(', ')}</p>`:''}
+    ${homo.length?`<p><b>Sans pseudo et sur plusieurs téléphones :</b> ${homo.map(e=>esc(e.n)).join(', ')}. Il peut s'agir de deux élèves différents : demande-leur de choisir un pseudo.</p>`:''}
     ${inact.length?`<p><b>Inactifs depuis 14 jours :</b> ${inact.map(e=>esc(e.n)).join(', ')}</p>`:''}</section>`:''}
   <section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">Élèves${PR.cl?' de '+esc(PR.cl):''}</p>
     ${el.length?`<div class="tablewrap"><table class="bilan"><tr><th>Élève</th>${PR.cl?'':'<th>Classe</th>'}<th>Activités</th><th>Quiz /20</th><th>Éval. /20</th><th>Dernière</th><th>À revoir</th></tr>
@@ -3678,7 +3690,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}}
 const rec=cid=>DB.ch[cid]||(DB.ch[cid]={ok:0,tot:0,best:null,evals:[]});
 const SEUIL=7;
 const prenom=()=>DB.profil?DB.profil.prenom:'';
-const eleve=()=>DB.profil?`${DB.profil.prenom} ${DB.profil.nom.toUpperCase()}`:'';
+const eleve=()=>DB.profil?`${DB.profil.prenom} ${DB.profil.nom.toUpperCase()}${DB.profil.pseudo?' (@'+DB.profil.pseudo+')':''}`:'';
 
 /* ---------- état ---------- */
 const S={view:'home',niv:null,cid:null,tab:'cours',c:{},editProfil:false,err:''};
@@ -3730,7 +3742,7 @@ function feedbackHTML(q,s){
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function profilForm(why){
-  const p=DB.profil||{prenom:'',nom:'',classe:'',niveau:S.niv||''};
+  const p=S.draft||DB.profil||{prenom:'',nom:'',classe:'',niveau:S.niv||''};
   return `<section class="card" style="display:flex;flex-direction:column;gap:14px">
     <p class="eyebrow">${DB.profil?'Modifier mon profil':'Mon profil'}</p>
     ${why?`<p>${why}</p>`:''}
@@ -3738,9 +3750,12 @@ function profilForm(why){
       <label>Prénom<input id="pf-prenom" autocomplete="given-name" value="${esc(p.prenom)}" placeholder="Ex. : Awa"></label>
       <label>Nom<input id="pf-nom" autocomplete="family-name" value="${esc(p.nom)}" placeholder="Ex. : Diop"></label>
       <label>Niveau<select id="pf-niv">${['6e','5e','4e','3e'].map(n=>`<option value="${n}" ${p.niveau===n?'selected':''}>${n} (${LV[n].nom})</option>`).join('')}</select></label>
+      <label>Mon pseudo<input id="pf-pseudo" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" value="${esc(p.pseudo||'')}" placeholder="Ex. : awa_maths"></label>
+      <label>Mon code secret (4 chiffres)<input id="pf-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••" value="${esc(S.draft&&S.draft.pin||'')}"></label>
       <label>Classe<select id="pf-classe">${'ABCDEFGH'.split('').map(L=>`<option value="${L}" ${(p.classe||'').toUpperCase().endsWith(L)?'selected':''}>${L}</option>`).join('')}</select></label>
     </div>
-    ${S.err?`<p class="err">${S.err}</p>`:''}
+    <p class="small">Ton <b>pseudo</b> est unique : personne d'autre ne peut le prendre. Retiens bien ton <b>code secret</b> : il te permet de retrouver ton suivi sur un autre téléphone.</p>
+    ${S.err?`<p class="err">${S.err}</p>`:''}${S.busy?`<p class="small"><b>Vérification du pseudo…</b></p>`:''}
     <p class="small">Ton nom et ta classe apparaissent sur tes fiches de résultats. ${trackOn()?"Tes notes aux quiz et aux évaluations sont aussi envoyées à M. Thiam pour suivre ta progression.":"Ils restent sur ce téléphone."}</p>
     <div class="row"><button class="btn gold" data-act="save-profil">Enregistrer</button>${DB.profil?`<button class="btn ghost" data-act="cancel-profil">Annuler</button>`:''}</div>
   </section>`;
@@ -3767,7 +3782,7 @@ function homeHTML(){
     <p class="lead">Tout le programme de 6e, 5e, 4e et 3e : cours rédigés, exercices corrigés pas à pas, quiz et évaluations notées sur 20.</p>
     <div style="margin-top:14px">${bulle('Le mot de M. Thiam',`<p>Choisis ton niveau, puis travaille chaque chapitre dans l'ordre : <b>Cours → S'entraîner → Quiz → Évaluation</b>. Avec <b>7/10 au quiz</b>, l'évaluation se débloque.</p><p>À la fin, envoie-moi ta <b>fiche de résultats</b> par WhatsApp ou en capture d'écran. Les nouveaux chapitres arrivent au fur et à mesure de nos cours.</p>`)}</div>
   </section>
-  ${!p||S.editProfil?profilForm(p?'':'Avant de commencer, présente-toi : ton nom apparaîtra sur tes fiches de résultats.'):`<section class="card row" style="justify-content:space-between">
+  ${!p||S.editProfil||(trackOn()&&!p.pseudo)?profilForm(!p?'Avant de commencer, présente-toi : ton nom apparaîtra sur tes fiches de résultats.':!p.pseudo?'Nouveau : choisis ton pseudo et ton code secret.':''):`<section class="card row" style="justify-content:space-between">
     <div><p class="eyebrow">Mon profil</p><p style="margin-top:4px"><b style="color:var(--ink)">${esc(eleve())}</b> · ${esc(p.classe||p.niveau)}</p></div>
     <button class="btn ghost" data-act="edit-profil">Modifier</button></section>`}
   <section class="levels">${['6e','5e','4e','3e'].map(n=>{const s=lvlStats(n);return `<article class="card lvl ${mine===n?'mine':''}" style="--lc:${LV[n].color}">
@@ -3908,7 +3923,7 @@ function evalHTML(c,unlocked){
   if(!unlocked)return `<section class="card lockcard"><p class="eyebrow">Évaluation verrouillée</p><h2>Réussis d'abord le quiz</h2>
     ${bulle('Le conseil du prof',`<p>L'évaluation s'ouvre quand tu obtiens <b>au moins 7/10 au quiz</b>. ${r.best!==null?`Ton meilleur score est ${r.best}/10.`:"Tu n'as pas encore fait le quiz."}</p>`)}
     <button class="btn gold" data-act="tab" data-t="quiz">Aller au quiz</button></section>`;
-  if(!DB.profil)return profilForm("Pour que ta fiche de résultats porte ton nom, présente-toi avant l'évaluation.");
+  if(!DB.profil||(trackOn()&&!DB.profil.pseudo))return profilForm(DB.profil?"Nouveau : choisis ton pseudo et ton code secret avant l'évaluation.":"Pour que ta fiche de résultats porte ton nom, présente-toi avant l'évaluation.");
   if(!E)return `<section class="card" style="display:flex;flex-direction:column;gap:14px">
     <p class="eyebrow">Évaluation · ${c.titre}</p><h2>10 questions, notées sur 20</h2>
     <ul style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px">
@@ -3964,12 +3979,26 @@ document.addEventListener('click',e=>{
   else if(a==='edit-profil'){S.editProfil=true}
   else if(a==='cancel-profil'){S.editProfil=false}
   else if(a==='save-profil'){
+    if(S.busy)return;
     const v=id=>document.getElementById(id).value.trim();
-    const P={prenom:v('pf-prenom'),nom:v('pf-nom'),niveau:v('pf-niv'),classe:v('pf-classe')};
+    const P={prenom:v('pf-prenom'),nom:v('pf-nom'),niveau:v('pf-niv'),classe:v('pf-classe'),pseudo:v('pf-pseudo').toLowerCase()};
+    const pin=v('pf-pin');S.draft=Object.assign({},P,{pin,classe:v('pf-classe')});
     if(!P.prenom||!P.nom){S.err="Écris ton prénom et ton nom.";render();return}
+    if(!/^[a-z0-9_.-]{3,20}$/.test(P.pseudo)){S.err="Choisis un pseudo de 3 à 20 caractères : lettres sans accent, chiffres, point, tiret ou _.";render();return}
+    const old=DB.profil;
+    if(!/^\d{4}$/.test(pin)&&!(old&&old.pseudo===P.pseudo&&old.ok)){S.err="Choisis un code secret de 4 chiffres.";render();return}
     P.classe=P.niveau.replace('e','')+(P.classe||'A');
-    const first=!DB.profil;DB.profil=P;save();S.editProfil=false;
-    if(first&&S.view==='home'){S.view='level';S.niv=P.niveau}
+    const finish=(ok)=>{const first=!old;S.draft=null;P.ok=ok;if(!ok)P.pinTmp=pin;DB.profil=P;save();S.editProfil=false;S.busy=false;S.err='';
+      if(first&&S.view==='home'){S.view='level';S.niv=P.niveau}render();window.scrollTo({top:0,behavior:'smooth'});
+      toast(ok?'Profil enregistré · @'+P.pseudo:'Profil enregistré. Ton pseudo sera vérifié à la prochaine connexion.')};
+    if(!trackOn()){finish(true);return}
+    if(old&&old.ok&&old.pseudo===P.pseudo&&!pin){finish(true);registerPseudo(P,null);return}
+    S.busy=true;S.err='';render();
+    registerPseudo(P,pin).then(r=>{
+      if(r===null){finish(false);return}
+      if(!r.ok){S.busy=false;S.err=r.erreur||"Ce pseudo n'est pas disponible.";render();return}
+      finish(true)});
+    return;
   }
   else if(a==='level'){S.view='level';S.niv=b.dataset.n}
   else if(a==='prof-open'){S.view='prof';PR.eleve=null;const c=profCode();if(c&&!PR.rows&&!PR.loading){render();loadProf(c,true);return}}
