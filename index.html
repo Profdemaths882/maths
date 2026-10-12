@@ -1,5 +1,13 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Profdemaths 2.0 · Maths</title>
 <meta name="theme-color" content="#0F2552">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Profdemaths">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Nunito+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap">
@@ -280,6 +288,8 @@ th{background:var(--navy);color:#fff;font-family:var(--display);font-size:13px;l
 .bilan td{vertical-align:middle}
 .qrbox img.qrlogo{width:22%;height:22%;min-width:34px;min-height:34px;display:block}
 .qrbox{display:inline-block;line-height:0}
+
+.meRow{box-shadow:0 0 0 3px var(--gold),var(--shadow)!important}
 
 </style>
 <header class="top"><div class="top-in">
@@ -3609,10 +3619,25 @@ function profHTML(){
     ${diff.length?`<p><b>En difficulté (moyenne &lt; 10) :</b> ${diff.map(e=>esc(e.n)).join(', ')}</p>`:''}
     ${homo.length?`<p><b>Sans pseudo et sur plusieurs téléphones :</b> ${homo.map(e=>esc(e.n)).join(', ')}. Il peut s'agir de deux élèves différents : demande-leur de choisir un pseudo.</p>`:''}
     ${inact.length?`<p><b>Inactifs depuis 14 jours :</b> ${inact.map(e=>esc(e.n)).join(', ')}</p>`:''}</section>`:''}
+  ${(()=>{const now=new Date(),d0=new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7)).getTime(),m0=new Date(now.getFullYear(),now.getMonth(),1).getTime();
+    const pts=(r)=>r.Type==='Quiz'?+r.Note||0:r.Type==='Évaluation du mois'?Math.round((+r.Note||0)*1.5):/valuation/.test(r.Type)?+r.Note||0:0;
+    const top=(from)=>{const best={};R.filter(r=>r.ts>=from).forEach(r=>{const k=r.K+'|'+r.Code+'|'+r.Type+'|'+r.Date,v=pts(r);if(!best[k]||v>best[k].v)best[k]={K:r.K,c:r.Classe,v}});
+      const s={};Object.values(best).forEach(b=>{(s[b.K]=s[b.K]||{K:b.K,c:b.c,p:0}).p+=b.v});return Object.values(s).sort((a,b)=>b.p-a.p).slice(0,5)};
+    const tw=top(d0),tm=top(m0);if(!tw.length&&!tm.length)return '';
+    const li=l=>l.length?l.map((x,i)=>`<p>${['🥇','🥈','🥉','4.','5.'][i]} <b>${esc(x.K)}</b>${PR.cl?'':' · '+esc(x.c)} · ${x.p} pts</p>`).join(''):'<p class="small">Personne cette période.</p>';
+    return `<section class="card" style="display:flex;flex-direction:column;gap:8px"><p class="eyebrow">🏆 Meilleurs élèves${PR.cl?' de '+esc(PR.cl):''}</p>
+      <div class="levels" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))"><div><p><b>Cette semaine</b></p>${li(tw)}</div><div><p><b>Ce mois</b></p>${li(tm)}</div></div>
+      <p class="small">Mêmes points que le classement des élèves (qui, lui, n'affiche que les pseudos).</p></section>`})()}
   <section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">Élèves${PR.cl?' de '+esc(PR.cl):''}</p>
     ${el.length?`<div class="tablewrap"><table class="bilan"><tr><th>Élève</th>${PR.cl?'':'<th>Classe</th>'}<th>Activités</th><th>Quiz /20</th><th>Éval. /20</th><th>Dernière</th><th>À revoir</th></tr>
     ${el.map(e=>`<tr><td><button class="linkbtn" data-act="prof-eleve" data-e="${esc(e.n)}">${esc(e.n)}</button></td>${PR.cl?'':`<td>${esc(e.classe)}</td>`}<td>${e.nb}</td><td>${pillN(e.qz)}</td><td>${pillN(e.ev)}</td><td>${esc(e.last)}</td><td class="small">${e.faibles.map(esc).join(', ')||'—'}</td></tr>`).join('')}</table></div>`:'<p class="small">Aucun résultat pour le moment.</p>'}
   </section>
+  ${(()=>{const cnt={};R.forEach(r=>{String(r['Compétences à revoir']||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(sk=>{const k=r.Chapitre+'||'+sk;(cnt[k]=cnt[k]||new Set()).add(r.K)})});
+    const top=Object.entries(cnt).map(([k,s])=>({ch:k.split('||')[0],sk:k.split('||')[1],n:s.size})).sort((a,b)=>b.n-a.n).slice(0,8);
+    return top.length?`<section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">Compétences à retravailler en classe</p>
+    <div class="tablewrap"><table class="bilan"><tr><th>Compétence</th><th>Chapitre</th><th>Élèves concernés</th></tr>
+    ${top.map(x=>`<tr><td><b>${esc(x.sk)}</b></td><td>${esc(x.ch)}</td><td>${x.n}</td></tr>`).join('')}</table></div>
+    <p class="small">Nombre d'élèves qui ont raté cette compétence au moins une fois (quiz ou évaluation).</p></section>`:''})()}
   ${chaps.length?`<section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">Chapitres évalués</p>
     <div class="tablewrap"><table class="bilan"><tr><th>Chapitre</th><th>Élèves</th><th>Moyenne</th><th>≥ 10</th></tr>
     ${chaps.map(c=>`<tr><td>${esc(c.c)}</td><td>${c.nb}</td><td>${pillN(c.m)}</td><td>${c.ok} %</td></tr>`).join('')}</table></div>
@@ -3625,6 +3650,99 @@ function profEleveHTML(l){
   <div class="chap-head"><p class="eyebrow">${esc(f.Classe||'')} · ${l.length} activités</p><h1>${esc(PR.eleve)}</h1></div>
   <section class="card"><div class="tablewrap"><table class="bilan"><tr><th>Date</th><th>Type</th><th>Chapitre</th><th>Note</th><th>/20</th><th>À revoir</th></tr>
   ${l.map(r=>`<tr><td>${esc(r.Date)} ${esc(r.Heure)}</td><td>${esc(r.Type)}</td><td>${esc(r.Chapitre)}</td><td>${esc(r.Note)}/${esc(r.Sur)}</td><td>${pillN(r.n20)}</td><td class="small">${esc(r['Compétences à revoir'])||'—'}</td></tr>`).join('')}</table></div></section>`;
+}
+
+/* ---------- remédiation : compétences réussies / ratées par élève ---------- */
+function recordSkill(cid,label,ok){
+  if(!label)return;
+  if(REG[cid]&&REG[cid].monthly){const niv=cid.split('-')[0];const hit=REG[cid].codes.map(c=>niv+'-'+c).find(c=>skillKey(c,label));if(!hit)return;cid=hit}
+  DB.sk=DB.sk||{};const t=(DB.sk[cid]=DB.sk[cid]||{});let v=t[label];if(!Array.isArray(v)||v.length===2&&v[1]>1)v=[];
+  v.push(ok?1:0);if(v.length>5)v=v.slice(-5);t[label]=v;
+}
+const SKMAP={};
+function skillKey(cid,label){
+  const R=REG[cid];if(!R||!R.skills)return null;
+  if(!SKMAP[cid]){const mp={};
+    for(const [k,lab,gen] of R.skills){mp[lab]=k;for(let i=0;i<5;i++){try{const q=gen();if(q&&q.skill&&!mp[q.skill])mp[q.skill]=k}catch(e){}}}
+    SKMAP[cid]=mp}
+  return SKMAP[cid][label]||null;
+}
+function weakList(niv,max=6){
+  const out=[];const sk=DB.sk||{};
+  for(const c of LV[niv].chaps){const cid=niv+'-'+c[0],t=sk[cid];if(!t||!REG[cid])continue;
+    for(const [lab,v] of Object.entries(t)){if(!Array.isArray(v))continue;const tot=v.length,ok=v.reduce((a,b)=>a+b,0),rate=ok/tot;
+      if(tot>=2&&rate<0.6)out.push({cid,chap:c[1],lab,ok,tot,rate,k:skillKey(cid,lab)||'mix'})}}
+  return out.sort((a,b)=>a.rate-b.rate||b.tot-a.tot).slice(0,max);
+}
+function weakHTML(niv,title){
+  const w=weakList(niv);if(!w.length)return '';
+  return `<section class="card" style="display:flex;flex-direction:column;gap:12px;border-top:6px solid var(--red)">
+    <p class="eyebrow" style="color:var(--red)">${title||'Mes points faibles'}</p>
+    <p class="small">Les compétences que tu réussis le moins. Entraîne-toi dessus : chaque exercice est corrigé pas à pas.</p>
+    <div class="clist">${w.map(x=>`<div class="crow" style="border-left-color:var(--red)"><div class="ct"><b>${x.lab}</b><small>${x.chap} · ${x.ok} réussite${x.ok>1?'s':''} sur tes ${x.tot} derniers essais</small></div>
+      <button class="btn gold" data-act="weak" data-c="${x.cid}" data-k="${x.k}">Je m'entraîne</button></div>`).join('')}</div>
+    ${bulle('Le conseil du prof',`<p>Refais 3 exercices de suite sans erreur sur une compétence : elle quittera cette liste.</p>`)}</section>`;
+}
+/* ---------- application installable ---------- */
+let INSTALL_EVT=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_EVT=e;if(typeof render==='function'&&S.view==='home')render()});
+const isStandalone=()=>window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
+function installHTML(){
+  if(isStandalone()||!/github\.io$/.test(location.hostname))return '';
+  if(INSTALL_EVT)return `<section class="card sharecard" style="border-top:6px solid var(--gold)"><img src="${LOGO}" alt="" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--gold)">
+    <div class="txt"><p class="eyebrow">Installer l'application</p><p class="small">Ajoute Profdemaths 2.0 sur ton téléphone : elle s'ouvre comme une vraie application et marche même <b>sans connexion</b>.</p>
+    <button class="btn gold" data-act="install">Installer sur mon téléphone</button></div></section>`;
+  if(isIOS())return `<section class="card" style="border-top:6px solid var(--gold)"><p class="eyebrow">Installer sur iPhone</p>
+    <p class="small">Dans Safari, touche le bouton <b>Partager</b> (carré avec une flèche), puis <b>« Sur l'écran d'accueil »</b>. L'application marchera aussi sans connexion.</p></section>`;
+  return '';
+}
+if('serviceWorker' in navigator&&/github\.io$/.test(location.hostname)){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').then(reg=>{
+    reg.addEventListener('updatefound',()=>{const w=reg.installing;if(!w)return;w.addEventListener('statechange',()=>{
+      if(w.state==='installed'&&navigator.serviceWorker.controller)toast("Nouvelle version disponible : ferme et rouvre l'application.")})})}).catch(()=>{})});
+}
+
+/* ---------- classement public (pseudos uniquement) ---------- */
+const RK={data:null,loading:false,err:'',per:'semaine',scope:''};
+try{const c=JSON.parse(localStorage.getItem('pdm_classement')||'null');if(c)RK.data=c}catch(e){}
+function loadRank(){
+  if(!trackOn()){RK.err="Le classement n'est pas encore disponible.";render();return}
+  RK.loading=true;RK.err='';render();
+  const cb='__pdmr'+Date.now(),s=document.createElement('script');
+  const done=()=>{RK.loading=false;delete window[cb];s.remove();if(S.view==='rank')render()};
+  const timer=setTimeout(()=>{RK.err=RK.data?"Pas de connexion : voici le dernier classement chargé.":"Pas de connexion pour charger le classement.";done()},20000);
+  window[cb]=d=>{clearTimeout(timer);if(d&&d.ok){RK.data=d.classement;try{localStorage.setItem('pdm_classement',JSON.stringify(RK.data))}catch(e){}}else RK.err="Classement indisponible pour le moment.";done()};
+  s.onerror=()=>{clearTimeout(timer);RK.err=RK.data?"Pas de connexion : voici le dernier classement chargé.":"Pas de connexion pour charger le classement.";done()};
+  s.src=TRACK_URL+'?action=classement&callback='+cb;document.body.appendChild(s);
+}
+function rankHTML(){
+  const P=DB.profil||{},me=(P.pseudo||'').toLowerCase();
+  if(!RK.scope)RK.scope=P.classe?'classe':P.niveau?'niveau':'tous';
+  const all=(RK.data&&RK.data[RK.per])||[];
+  const L=all.filter(x=>RK.scope==='classe'?x.c===String(P.classe||'').toUpperCase():RK.scope==='niveau'?x.v===P.niveau:true).sort((a,b)=>b.pts-a.pts||a.n-b.n||a.p.localeCompare(b.p));
+  const myIdx=L.findIndex(x=>x.p===me);
+  const medal=['🥇','🥈','🥉'];
+  const scopes=[P.classe?['classe','Ma classe ('+P.classe+')']:null,P.niveau?['niveau','Toute la '+P.niveau]:null,['tous','Tout le collège']].filter(Boolean);
+  const row=(x,i)=>`<div class="crow ${x.p===me?'meRow':''}" style="${i<3?'border-left-color:var(--gold)':''}"><span class="no" style="${i<3?'background:var(--gold-soft);color:var(--gold-ink)':''}">${i<3?medal[i]:i+1}</span>
+    <div class="ct"><b>@${esc(x.p)}${x.p===me?' · toi':''}</b><small>${esc(x.c)} · ${x.n} activité${x.n>1?'s':''}</small></div><span class="pill ok" style="font-size:14px">${x.pts} pts</span></div>`;
+  return `<div class="chap-head"><p class="eyebrow">Classement Profdemaths 2.0</p><h1>🏆 Les champions ${RK.per==='semaine'?'de la semaine':'du mois'}</h1>
+    <p class="small">Seuls les pseudos apparaissent, jamais les noms.${RK.data&&RK.data.maj?' Mis à jour le '+esc(RK.data.maj)+'.':''}</p></div>
+  <div class="skills">${[['semaine','Cette semaine'],['mois','Ce mois']].map(([k,l])=>`<button class="skill ${RK.per===k?'on':''}" data-act="rk-per" data-k="${k}">${l}</button>`).join('')}</div>
+  <div class="skills">${scopes.map(([k,l])=>`<button class="skill ${RK.scope===k?'on':''}" data-act="rk-scope" data-k="${k}">${l}</button>`).join('')}</div>
+  ${RK.err?`<p class="err">${RK.err}</p>`:''}${RK.loading?`<p class="small"><b>Chargement du classement…</b></p>`:''}
+  ${me&&myIdx>=0?`<section class="card hero" style="display:flex;flex-direction:column;gap:6px"><p class="eyebrow">Ta place</p><h1><span>${myIdx+1}${myIdx?'e':'re'}</span> sur ${L.length}</h1><p class="lead">avec <b>${L[myIdx].pts} points</b>${myIdx>0?` · encore <b>${L[myIdx-1].pts-L[myIdx].pts+1} point${L[myIdx-1].pts-L[myIdx].pts+1>1?'s':''}</b> pour dépasser @${esc(L[myIdx-1].p)} !`:' · tu es en tête, bravo !'}</p></section>`
+    :me?`<section class="card"><p class="small">Tu n'es pas encore classé${RK.per==='semaine'?' cette semaine':' ce mois-ci'}. Fais un quiz ou une évaluation pour entrer dans le classement !</p></section>`
+    :`<section class="card"><p class="small">Choisis un pseudo dans ton profil pour apparaître dans le classement.</p></section>`}
+  <section class="clist">${L.length?L.slice(0,10).map(row).join('')+(myIdx>=10?`<p class="small center">…</p>`+row(L[myIdx],myIdx):''):`<p class="small">Personne n'est encore classé pour cette période. Sois le premier !</p>`}</section>
+  ${bulle('Comment gagner des points ?',`<p>Quiz : jusqu'à <b>10 points</b>. Évaluation de chapitre : jusqu'à <b>20 points</b>. Évaluation du mois : jusqu'à <b>30 points</b>.</p><p>Une seule note compte par chapitre et par jour : <b>la meilleure</b>. Travaille un peu chaque jour : c'est la régularité qui fait gagner !</p>`)}
+  <div class="row"><button class="btn" data-act="rk-refresh">Actualiser</button><button class="btn ghost" data-act="home">Accueil</button></div>`;
+}
+function rankCardHTML(){
+  if(!trackOn())return '';
+  return `<section class="card sharecard" style="border-top:6px solid var(--gold)"><div style="font-size:44px;line-height:1">🏆</div>
+    <div class="txt"><p class="eyebrow">Classement</p><p class="small">Les champions de la semaine et du mois, dans ta classe, ton niveau et tout le collège.</p>
+    <button class="btn gold" data-act="rank">Voir le classement</button></div></section>`;
 }
 
 /* =====================================================================
@@ -3766,7 +3884,7 @@ function render(){
   document.getElementById('homebtn').hidden=S.view==='home';
   document.getElementById('sub').textContent=DB.profil?`${eleve()} · ${DB.profil.classe||DB.profil.niveau}`:'Maths au collège · 6e · 5e · 4e · 3e';
   const app=document.getElementById('app');
-  app.innerHTML=S.view==='home'?homeHTML():S.view==='level'?levelHTML():S.view==='guide'?guideHTML():S.view==='prof'?profHTML():chapHTML();
+  app.innerHTML=S.view==='home'?homeHTML():S.view==='level'?levelHTML():S.view==='guide'?guideHTML():S.view==='prof'?profHTML():S.view==='rank'?rankHTML():chapHTML();
   const qh=document.getElementById('qrhome');if(qh)makeQR(qh,150);
   document.querySelectorAll('[data-qr]').forEach(e=>makeQR(e,170));
 }
@@ -3785,6 +3903,7 @@ function homeHTML(){
   ${!p||S.editProfil||(trackOn()&&!p.pseudo)?profilForm(!p?'Avant de commencer, présente-toi : ton nom apparaîtra sur tes fiches de résultats.':!p.pseudo?'Nouveau : choisis ton pseudo et ton code secret.':''):`<section class="card row" style="justify-content:space-between">
     <div><p class="eyebrow">Mon profil</p><p style="margin-top:4px"><b style="color:var(--ink)">${esc(eleve())}</b> · ${esc(p.classe||p.niveau)}</p></div>
     <button class="btn ghost" data-act="edit-profil">Modifier</button></section>`}
+  ${installHTML()}${rankCardHTML()}${p&&p.niveau?weakHTML(p.niveau,'Mes points faibles en '+p.niveau):''}
   <section class="levels">${['6e','5e','4e','3e'].map(n=>{const s=lvlStats(n);return `<article class="card lvl ${mine===n?'mine':''}" style="--lc:${LV[n].color}">
     ${mine===n?'<span class="badge">Mon niveau</span>':''}
     <h2>${n}<small>${LV[n].nom}</small></h2>
@@ -3820,6 +3939,7 @@ function levelHTML(){
   return `<div class="chap-head"><p class="eyebrow">Mathématiques · ${L.nom}</p><h1>Programme de ${n}</h1>
     <p class="small">${s.tot} chapitres dans l'ordre de la progression · ${s.av} disponible${s.av>1?'s':''} aujourd'hui, les autres arrivent au fil des cours.</p></div>
   ${GUIDE[n]?`<section class="card guidecard"><img src="${LOGO}" alt=""><div><p class="eyebrow">Guide de l'année</p><b>Organisation, progression, calendrier, méthode</b><p class="small">Tout le diaporama de la rentrée, à relire quand tu veux.</p></div><button class="btn gold" data-act="guide" data-n="${n}">Ouvrir</button></section>`:''}
+  ${weakHTML(n)}
   <section class="clist">${rows}</section>
   <section class="card" style="display:flex;flex-direction:column;gap:12px"><p class="eyebrow">Évaluations formatives du mois</p>
     <p class="small">À faire en fin de mois : 10 questions sur les chapitres du mois, notées sur 20. C'est ton rendez-vous J+30.</p>
@@ -4012,13 +4132,19 @@ document.addEventListener('click',e=>{
   else if(a==='gs'){S.gi=b.dataset.i===''?null:+b.dataset.i;window.scrollTo(0,0)}
   else if(a==='open'){S.view='chap';S.cid=b.dataset.c;S.niv=S.cid.split('-')[0];S.tab='cours'}
   else if(a==='tab'){S.tab=b.dataset.t;if(S.tab==='eval'&&s.sheet&&!(s.eval&&s.eval.done))s.sheet=null}
+  else if(a==='rank'){S.view='rank';window.scrollTo(0,0);loadRank();return}
+  else if(a==='rk-per'){RK.per=b.dataset.k}
+  else if(a==='rk-scope'){RK.scope=b.dataset.k}
+  else if(a==='rk-refresh'){loadRank();return}
+  else if(a==='weak'){S.view='chap';S.cid=b.dataset.c;S.niv=S.cid.split('-')[0];S.tab='train';const w=st(S.cid);w.train={k:b.dataset.k,q:newTrainQ(S.cid,b.dataset.k),answered:false,picked:null,hint:false,streak:0};window.scrollTo(0,0)}
+  else if(a==='install'){if(INSTALL_EVT){INSTALL_EVT.prompt();INSTALL_EVT.userChoice.finally(()=>{INSTALL_EVT=null;render()})}return}
   else if(a==='skill'){s.train={k:b.dataset.k,q:newTrainQ(cid,b.dataset.k),answered:false,picked:null,hint:false,streak:s.train?s.train.streak:0}}
   else if(a==='hint'){s.train.hint=true}
   else if(a==='next'){const T=s.train;T.q=newTrainQ(cid,T.k);T.answered=false;T.picked=null;T.hint=false}
   else if(a==='choose'){
     const i=+b.dataset.i,r=rec(cid);
-    if(S.tab==='train'){const T=s.train;if(T.answered)return;T.picked=i;T.answered=true;r.tot++;if(T.q.choices[i].ok){r.ok++;T.streak++}else T.streak=0;save()}
-    else if(S.tab==='quiz'){const Q=s.quiz;if(Q.answered)return;Q.picked=i;Q.answered=true;if(Q.qs[Q.i].choices[i].ok)Q.score++;else (Q.wrong=Q.wrong||[]).push(Q.qs[Q.i].skill)}
+    if(S.tab==='train'){const T=s.train;if(T.answered)return;T.picked=i;T.answered=true;r.tot++;if(T.q.choices[i].ok){r.ok++;T.streak++}else T.streak=0;recordSkill(cid,T.q.skill,T.q.choices[i].ok);save()}
+    else if(S.tab==='quiz'){const Q=s.quiz;if(Q.answered)return;Q.picked=i;Q.answered=true;if(Q.qs[Q.i].choices[i].ok)Q.score++;else (Q.wrong=Q.wrong||[]).push(Q.qs[Q.i].skill);recordSkill(cid,Q.qs[Q.i].skill,Q.qs[Q.i].choices[i].ok);save()}
     else if(S.tab==='eval'){s.eval.picked[s.eval.i]=i}
   }
   else if(a==='quiz-start'){s.quiz={qs:shuffle(REG[cid].serie()),i:0,picked:null,answered:false,score:0,done:false,start:Date.now(),wrong:[]}}
@@ -4032,7 +4158,7 @@ document.addEventListener('click',e=>{
       const R={note:items.filter(x=>x.ok).length*2,items,attempt:r.evals.length+1,eleve:eleve(),classe:DB.profil.classe||DB.profil.niveau,
         date:d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
         duree:Math.floor(sec/60)+' min '+String(sec%60).padStart(2,'0')+' s'};
-      r.evals.push(R);save();s.sheet=R;
+      items.forEach(x=>recordSkill(cid,x.skill,x.ok));r.evals.push(R);save();s.sheet=R;
       track({type:REG[cid].monthly?'Évaluation du mois':'Évaluation',code:cid,chapitre:chapInfo(cid).titre,note:R.note,sur:20,duree:sec,tentative:R.attempt,revoir:[...new Set(items.filter(x=>!x.ok).map(x=>x.skill))].join(', ')})}}
   else if(a==='review'){s.review=!s.review}
   render();
