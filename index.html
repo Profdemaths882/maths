@@ -3574,7 +3574,7 @@ function loadProf(code,remember){
     if(!d||!d.ok){PR.err=(d&&d.erreur)||"Accès refusé.";try{localStorage.removeItem('pdm_prof_code')}catch(e){}}
     else{const H=d.entetes||COLS;PR.rows=d.lignes.map(l=>{const o={};H.forEach((h,i)=>o[h]=l[i]);o.n20=parseFloat(String(o['Note /20']).replace(',','.'))||0;
       const [dd,mm,yy]=String(o.Date).split('/');o.ts=new Date(+yy,+mm-1,+dd).getTime()||0;return o});
-      PR.feuille=d.feuille||'';PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
+      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:String(x[4]).toUpperCase().replace(/\s+/g,''),le:x[5],vu:x[6]}));PR.feuille=d.feuille||'';PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
     done()};
   s.onerror=()=>{clearTimeout(timer);PR.err="Impossible de joindre le serveur de suivi.";done()};
   s.src=TRACK_URL+'?code='+encodeURIComponent(code)+'&callback='+cb;document.body.appendChild(s);
@@ -3593,7 +3593,7 @@ function profHTML(){
       ${PR.err?`<p class="err">${esc(PR.err)}</p>`:''}
       <button class="btn gold" data-act="prof-login" ${PR.loading?'disabled':''}>${PR.loading?'Chargement…':'Accéder au suivi'}</button></section>
       <button class="btn ghost" data-act="home">Retour à l'accueil</button>`}
-  const rows=PR.rows,classes=[...new Set(rows.map(r=>r.Classe))].sort();
+  const rows=PR.rows,INS=PR.ins||[],classes=[...new Set(rows.map(r=>r.Classe).concat(INS.map(x=>x.c)).filter(Boolean))].sort();
   const R=PR.cl?rows.filter(r=>r.Classe===PR.cl):rows;
   if(PR.eleve)return profEleveHTML(R.filter(r=>(r.Pseudo?r['Élève']+' · @'+r.Pseudo:r['Élève'])===PR.eleve));
   const isEv=r=>/valuation/.test(r.Type),now=Date.now();
@@ -3603,6 +3603,8 @@ function profHTML(){
     const bestByChap={};ev.forEach(r=>{bestByChap[r.Chapitre]=Math.max(bestByChap[r.Chapitre]||0,r.n20)});
     const faibles=Object.entries(bestByChap).filter(([c,v])=>v<10).map(([c])=>c);
     return{n,uids:new Set(l.map(r=>r['Identifiant appareil'])).size,classe:l[0].Classe,nb:l.length,ev:avg(ev.map(r=>r.n20)),qz:avg(qz.map(r=>r.n20)),last:l.reduce((a,b)=>b.ts>=a.ts?b:a).Date,lastT,faibles}}).sort((a,b)=>a.n.localeCompare(b.n));
+  const nk=(a,b,c)=>(String(a)+' '+String(b)+'|'+String(c)).toUpperCase().replace(/\s+/g,' ').trim(),actifs=new Set(R.map(r=>String(r.Pseudo||'').toLowerCase()).filter(Boolean).concat(R.map(r=>nk(r['Prénom'],r.Nom,r.Classe))));
+  const insC=PR.cl?INS.filter(x=>x.c===PR.cl):INS,sansAct=insC.filter(x=>!actifs.has(x.p)&&!actifs.has(nk(x.prenom,x.nom,x.c))).sort((a,b)=>(a.c+a.nom+a.prenom).localeCompare(b.c+b.nom+b.prenom));
   const homo=el.filter(e=>e.uids>1&&!/ · @/.test(e.n)),evAll=R.filter(isEv),moy=avg(evAll.map(r=>r.n20)),diff=el.filter(e=>e.ev!==null&&e.ev<10),inact=el.filter(e=>now-e.lastT>14*864e5);
   const byC={};evAll.forEach(r=>{(byC[r.Chapitre]=byC[r.Chapitre]||[]).push(r)});
   const chaps=Object.entries(byC).map(([c,l])=>{const best={};l.forEach(r=>{best[r.K]=Math.max(best[r.K]||0,r.n20)});const v=Object.values(best);
@@ -3610,6 +3612,7 @@ function profHTML(){
   return `<div class="chap-head"><p class="eyebrow">Espace professeur · ${rows.length} résultats reçus</p><h1>Suivi des élèves</h1></div>
   <div class="skills">${['',...classes].map(c=>`<button class="skill ${PR.cl===c?'on':''}" data-act="prof-cl" data-c="${esc(c)}">${c||'Toutes les classes'}</button>`).join('')}</div>
   <section class="levels" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+    <article class="card center" style="display:flex;flex-direction:column;gap:4px"><p class="eyebrow">Élèves inscrits</p><p class="big">${insC.length}</p></article>
     <article class="card center" style="display:flex;flex-direction:column;gap:4px"><p class="eyebrow">Élèves actifs</p><p class="big">${el.length}</p></article>
     <article class="card center" style="display:flex;flex-direction:column;gap:4px"><p class="eyebrow">Évaluations</p><p class="big">${evAll.length}</p></article>
     <article class="card center" style="display:flex;flex-direction:column;gap:4px"><p class="eyebrow">Moyenne /20</p><p class="big">${fmt(moy)}</p></article>
@@ -3632,6 +3635,10 @@ function profHTML(){
     ${el.length?`<div class="tablewrap"><table class="bilan"><tr><th>Élève</th>${PR.cl?'':'<th>Classe</th>'}<th>Activités</th><th>Quiz /20</th><th>Éval. /20</th><th>Dernière</th><th>À revoir</th></tr>
     ${el.map(e=>`<tr><td><button class="linkbtn" data-act="prof-eleve" data-e="${esc(e.n)}">${esc(e.n)}</button></td>${PR.cl?'':`<td>${esc(e.classe)}</td>`}<td>${e.nb}</td><td>${pillN(e.qz)}</td><td>${pillN(e.ev)}</td><td>${esc(e.last)}</td><td class="small">${e.faibles.map(esc).join(', ')||'—'}</td></tr>`).join('')}</table></div>`:'<p class="small">Aucun résultat pour le moment.</p>'}
   </section>
+  ${sansAct.length?`<section class="card" style="display:flex;flex-direction:column;gap:10px;border-top:6px solid var(--gold)"><p class="eyebrow">Inscrits sans activité${PR.cl?' · '+esc(PR.cl):''} (${sansAct.length})</p>
+    <p class="small">Ces élèves ont créé leur profil mais n'ont encore terminé aucun quiz ni aucune évaluation.</p>
+    <div class="tablewrap"><table class="bilan"><tr><th>Élève</th><th>Pseudo</th>${PR.cl?'':'<th>Classe</th>'}<th>Inscrit le</th><th>Dernière connexion</th></tr>
+    ${sansAct.map(x=>`<tr><td><b>${esc(x.prenom)} ${esc(x.nom)}</b></td><td>@${esc(x.p)}</td>${PR.cl?'':`<td>${esc(x.c)}</td>`}<td>${esc(x.le)}</td><td>${esc(x.vu)}</td></tr>`).join('')}</table></div></section>`:''}
   ${(()=>{const cnt={};R.forEach(r=>{String(r['Compétences à revoir']||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(sk=>{const k=r.Chapitre+'||'+sk;(cnt[k]=cnt[k]||new Set()).add(r.K)})});
     const top=Object.entries(cnt).map(([k,s])=>({ch:k.split('||')[0],sk:k.split('||')[1],n:s.size})).sort((a,b)=>b.n-a.n).slice(0,8);
     return top.length?`<section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">Compétences à retravailler en classe</p>
