@@ -3858,7 +3858,8 @@ function posiSuiviHTML(n,compact){
     ${compact?'':`<p class="small">${g.txt}</p>`}
     ${ids.length?`<p class="small"><b>Mon rattrapage : ${ok} chapitre${ok>1?'s':''} validé${ok>1?'s':''} sur ${ids.length}</b> (quiz ≥ 7/10 ou évaluation ≥ 10/20)</p>
       <div class="progress"><span style="width:${pct}%"></span></div>`:''}
-    ${compact?`<button class="btn" data-act="posi" data-n="${n}">Voir mon plan de révision</button>`:''}</section>`;
+    ${compact?`<button class="btn" data-act="posi" data-n="${n}">Voir mon plan de révision</button>`:''}
+    ${g.k===3&&typeof DEFIS!=='undefined'&&DEFIS[n]?`<button class="btn gold" data-act="defis" data-n="${n}">🏅 Mes défis Olympiades</button>`:''}</section>`;
 }
 function posiQs(n){const out=[];POSI[n].doms.forEach((d,k)=>d.qs.forEach(q=>out.push({dom:k,q:q[0],ch:q[1],good:q[2],ex:q[3]})));return out}
 function posiCardHTML(n){
@@ -3956,6 +3957,72 @@ function posiProfHTML(R){
     ${dl.map(([nom,l])=>`<details><summary><b>${esc(nom)}</b> · ${l.length} élève${l.length>1?'s':''} · ${l.filter(x=>x.st[1]==='ok').length} rattrapé${l.filter(x=>x.st[1]==='ok').length>1?'s':''}</summary>
       <div class="tablewrap"><table class="bilan"><tr><th>Élève</th><th>Score</th><th>Activités depuis</th><th>Suivi</th></tr>
       ${l.sort((a,b)=>a.v-b.v).map(x=>`<tr><td>${esc(x.e.K)}</td><td>${x.v}/5</td><td>${x.n}</td><td><span class="pill ${x.st[1]}">${x.st[0]}</span></td></tr>`).join('')}</table></div></details>`).join('')}</section>`:''}`;
+}
+
+/* ---------- Défis type Olympiades (approfondissement) ---------- */
+const DEFIS={
+'6e':[
+ {t:"Les pages du cahier",e:"Pour numéroter les pages d'un cahier de 1 à 96, combien de chiffres faut-il écrire ?",i:"Compte séparément les pages à 1 chiffre (1 à 9) et les pages à 2 chiffres (10 à 96).",s:"Pages 1 à 9 : 9 pages de 1 chiffre, soit 9 chiffres.<br>Pages 10 à 96 : 96 − 10 + 1 = 87 pages de 2 chiffres, soit 174 chiffres.<br>D'où il faut 9 + 174 = <b>183 chiffres</b>."},
+ {t:"Le partage des mangues",e:"Awa, Binta et Coumba se partagent 45 mangues. Binta en a 5 de plus qu'Awa, et Coumba en a le double d'Awa. Combien chacune en a-t-elle ?",i:"Si Awa a une « part », Binta a une part + 5 et Coumba deux parts.",s:"Awa : 1 part ; Binta : 1 part + 5 ; Coumba : 2 parts.<br>En tout : 4 parts + 5 = 45, donc 4 parts = 40 et 1 part = 10.<br>D'où Awa a 10 mangues, Binta 15 et Coumba 20 (vérification : 10 + 15 + 20 = 45)."},
+ {t:"Le carré de carrés",e:"Combien de carrés (de toutes tailles) peut-on compter sur un damier de 3 cases sur 3 ?",i:"Compte les carrés de côté 1, puis de côté 2, puis de côté 3.",s:"Côté 1 : 9 carrés. Côté 2 : 4 carrés. Côté 3 : 1 carré.<br>D'où il y a 9 + 4 + 1 = <b>14 carrés</b>."},
+ {t:"Le nombre mystère",e:"Je suis un nombre décimal. Si on me multiplie par 10 puis qu'on ajoute 3,5, on obtient 50. Qui suis-je ?",i:"Remonte le programme à l'envers : fais les opérations contraires dans l'ordre inverse.",s:"On part de 50 : on retire 3,5, on obtient 46,5 ; on divise par 10, on obtient 4,65.<br>Vérification : 4,65 × 10 + 3,5 = 46,5 + 3,5 = 50.<br>D'où le nombre est <b>4,65</b>."},
+ {t:"La clôture du champ",e:"Un champ carré a un périmètre de 120 m. On plante un piquet tous les 5 m tout autour, en commençant par un coin. Combien de piquets faut-il ?",i:"Sur un contour fermé, il y a autant de piquets que d'intervalles.",s:"Le contour mesure 120 m et il y a un intervalle tous les 5 m : 120 ÷ 5 = 24 intervalles.<br>Sur un contour fermé, le dernier piquet est le premier : il y a autant de piquets que d'intervalles.<br>D'où il faut <b>24 piquets</b>."},
+ {t:"Les allumettes",e:"Avec des allumettes, on forme une rangée de carrés collés : 1 carré utilise 4 allumettes, 2 carrés en utilisent 7, 3 carrés en utilisent 10. Combien d'allumettes pour 20 carrés ?",i:"Chaque nouveau carré ajoute toujours le même nombre d'allumettes.",s:"Le premier carré utilise 4 allumettes, puis chaque carré suivant en ajoute 3.<br>Pour 20 carrés : 4 + 19 × 3 = 4 + 57 = 61.<br>D'où il faut <b>61 allumettes</b>."}],
+'5e':[
+ {t:"Je sais compter !",e:"Combien y a-t-il de nombres entiers de 1 à 100 qui sont divisibles par 2 ou par 5 ?",i:"Compte les multiples de 2, ceux de 5, puis retire ceux que tu as comptés deux fois (les multiples de 10).",s:"Multiples de 2 : 50. Multiples de 5 : 20. Multiples de 10 (comptés deux fois) : 10.<br>D'où 50 + 20 − 10 = <b>60 nombres</b>."},
+ {t:"Le dernier chiffre",e:"Quel est le chiffre des unités de 2<sup>2026</sup> ?",i:"Regarde le chiffre des unités de 2¹, 2², 2³, 2⁴, 2⁵… Il se répète.",s:"Chiffres des unités : 2, 4, 8, 6, puis 2, 4, 8, 6… (cycle de longueur 4).<br>Or 2026 = 4 × 506 + 2, donc on est à la 2e position du cycle.<br>D'où le chiffre des unités est <b>4</b>."},
+ {t:"La fraction cachée",e:"Quelle fraction de dénominateur 12 est comprise strictement entre 1/3 et 1/2 ?",i:"Écris 1/3 et 1/2 avec le dénominateur 12.",s:"1/3 = 4/12 et 1/2 = 6/12. Entre 4/12 et 6/12, il y a seulement 5/12.<br>D'où la fraction cherchée est <b>5/12</b>."},
+ {t:"Les angles de l'étoile",e:"Dans un triangle ABC, l'angle A mesure 50°. La bissectrice de l'angle B et la bissectrice de l'angle C se coupent en I. Combien mesure l'angle BIC ?",i:"Calcule B + C, puis la moitié de B + C, dans le triangle BIC.",s:"Dans ABC : B + C = 180° − 50° = 130°.<br>Dans BIC : les angles en B et C valent la moitié, soit (B + C) ÷ 2 = 65° en tout.<br>D'où l'angle BIC = 180° − 65° = <b>115°</b>."},
+ {t:"Les montres défectueuses",e:"À midi, deux montres sont à l'heure. L'une avance de 4 minutes par heure, l'autre retarde de 2 minutes par heure. Au bout de combien d'heures les deux montres auront-elles exactement 1 heure d'écart ?",i:"Chaque heure, l'écart entre les deux montres augmente de 4 + 2 minutes.",s:"Chaque heure, l'écart augmente de 4 + 2 = 6 minutes.<br>Pour 60 minutes d'écart : 60 ÷ 6 = 10 heures.<br>D'où il faut <b>10 heures</b> (il sera alors 22 h à l'heure exacte)."},
+ {t:"Le parallélogramme partagé",e:"ABCD est un parallélogramme de centre O. Que peut-on dire des aires des 4 triangles OAB, OBC, OCD et ODA ? Justifie.",i:"Compare d'abord OAB et OCD (symétrie de centre O), puis OAB et OBC (même hauteur issue de B, bases OA et OC).",s:"La symétrie de centre O échange OAB et OCD, et OBC et ODA : ces triangles ont deux à deux la même aire.<br>OAB et OBC ont la même hauteur issue de B, et des bases OA = OC : ils ont la même aire.<br>D'où les <b>4 triangles ont la même aire</b> (le quart de celle du parallélogramme)."}],
+'4e':[
+ {t:"Le régionnement du disque",e:"Quel est le plus grand nombre de régions que l'on peut obtenir dans un disque en traçant 3 droites ?",i:"Une nouvelle droite qui coupe k droites à l'intérieur du disque ajoute k + 1 régions.",s:"1 droite : 2 régions. La 2e droite coupe la 1re : elle ajoute 2 régions (4). La 3e coupe les deux autres en deux points distincts dans le disque : elle ajoute 3 régions.<br>D'où au maximum 4 + 3 = <b>7 régions</b>."},
+ {t:"Somme astucieuse",e:"Calcule S = 1/(1 × 2) + 1/(2 × 3) + 1/(3 × 4) + … + 1/(99 × 100).",i:"Vérifie que 1/(n(n+1)) = 1/n − 1/(n+1).",s:"On a 1/(n(n + 1)) = 1/n − 1/(n + 1) (réduis au même dénominateur pour vérifier).<br>Donc S = (1 − 1/2) + (1/2 − 1/3) + … + (1/99 − 1/100) : tous les termes intermédiaires s'annulent.<br>D'où S = 1 − 1/100 = <b>99/100</b>."},
+ {t:"La différence de deux carrés",e:"Sans calculatrice, calcule 2026² − 2025².",i:"Utilise a² − b² = (a − b)(a + b).",s:"2026² − 2025² = (2026 − 2025)(2026 + 2025) = 1 × 4051.<br>D'où le résultat est <b>4 051</b>."},
+ {t:"L'âge du capitaine",e:"Aujourd'hui, la somme des âges d'un père et de ses deux enfants est 55 ans. Dans 5 ans, l'âge du père sera égal à la somme des âges de ses deux enfants. Quel est l'âge actuel du père ?",i:"Appelle p l'âge du père et s la somme des âges des enfants aujourd'hui ; dans 5 ans, les DEUX enfants auront vieilli de 5 ans.",s:"p + s = 55. Dans 5 ans : p + 5 = s + 10, donc p = s + 5.<br>Alors (s + 5) + s = 55, soit 2s = 50, s = 25 et p = 30.<br>D'où le père a <b>30 ans</b> (vérification : dans 5 ans, 35 = 25 + 10)."},
+ {t:"Le triangle des milieux",e:"Un triangle ABC a un périmètre de 24 cm. On joint les milieux de ses côtés : quel est le périmètre du triangle obtenu ? Et le rapport des aires ?",i:"Théorème de la droite des milieux : chaque côté du petit triangle vaut la moitié d'un côté du grand.",s:"Chaque côté du triangle des milieux mesure la moitié du côté parallèle : périmètre = 24 ÷ 2 = <b>12 cm</b>.<br>Les 4 petits triangles obtenus sont superposables : le triangle des milieux a une aire égale au <b>quart</b> de celle de ABC."},
+ {t:"L'échelle contre le mur",e:"Une échelle de 5 m est appuyée contre un mur vertical ; son pied est à 1,4 m du mur. À quelle hauteur touche-t-elle le mur ? Si on éloigne le pied de 1,6 m de plus, de combien le haut descend-il ?",i:"Pythagore deux fois : h² = 5² − 1,4², puis avec 3 m au sol.",s:"h² = 25 − 1,96 = 23,04, donc h = 4,8 m.<br>Pied à 3 m : h'² = 25 − 9 = 16, donc h' = 4 m.<br>D'où le haut descend de 4,8 − 4 = <b>0,8 m</b>."}],
+'3e':[
+ {t:"Racines emboîtées",e:"Simplifie √(7 + 4√3).",i:"Cherche a et b tels que (a + b√3)² = 7 + 4√3.",s:"(2 + √3)² = 4 + 4√3 + 3 = 7 + 4√3.<br>Or 2 + √3 > 0, donc √(7 + 4√3) = |2 + √3| = <b>2 + √3</b>."},
+ {t:"Le puits",e:"Pour mesurer la profondeur d'un puits de diamètre 1,2 m, Moussa se place au bord : son œil, situé à 1,5 m du sol, voit juste, par-dessus le bord, le pied de la paroi opposée (au fond) quand il se recule de 0,4 m du bord. Quelle est la profondeur du puits ?",i:"Deux triangles rectangles en configuration de Thalès : (œil, pied, bord) et (bord, bord opposé du fond, …).",s:"Les triangles sont semblables (configuration de Thalès) : 0,4 / 1,5 = 1,2 / p.<br>Donc p = 1,5 × 1,2 ÷ 0,4 = 4,5.<br>D'où le puits a une profondeur de <b>4,5 m</b>."},
+ {t:"Le système des billets",e:"Avec 32 billets de 2 000 F et de 5 000 F, on paie exactement 100 000 F. Combien y a-t-il de billets de chaque sorte ?",i:"x + y = 32 et 2 000x + 5 000y = 100 000.",s:"x + y = 32 et 2x + 5y = 100. En remplaçant x = 32 − y : 64 − 2y + 5y = 100, donc 3y = 36, y = 12, x = 20.<br>Vérification : 20 × 2 000 + 12 × 5 000 = 40 000 + 60 000 = 100 000.<br>D'où <b>20 billets de 2 000 F et 12 de 5 000 F</b>."},
+ {t:"L'angle inscrit",e:"A, B, C, D sont 4 points d'un cercle dans cet ordre. L'angle ABD mesure 35° et l'angle DBC mesure 40°. Combien mesurent les angles CAD et ACD ?",i:"Les angles inscrits qui interceptent le même arc sont égaux.",s:"CAD et CBD interceptent le même arc CD : CAD = 40°.<br>ACD et ABD interceptent le même arc AD : ACD = 35°.<br>D'où <b>CAD = 40° et ACD = 35°</b>."},
+ {t:"La cuve conique",e:"Une cuve en forme de cône (pointe en bas) de hauteur 60 cm est remplie d'eau jusqu'à 30 cm de hauteur. Quelle fraction du volume de la cuve l'eau occupe-t-elle ?",i:"L'eau forme un petit cône, réduction de coefficient k = 30/60.",s:"L'eau forme un cône réduit de coefficient k = 30/60 = 1/2.<br>Les volumes sont multipliés par k³ = 1/8.<br>D'où l'eau n'occupe que <b>1/8</b> du volume : la cuve est loin d'être à moitié pleine !"},
+ {t:"La médiane cachée",e:"Dans une classe, 5 notes sont : 8 ; 12 ; x ; 15 ; 10. La moyenne est 11 et la médiane est 10. Trouve x.",i:"Utilise d'abord la moyenne.",s:"Somme = 5 × 11 = 55, donc x = 55 − (8 + 12 + 15 + 10) = 10.<br>Série rangée : 8 ; 10 ; 10 ; 12 ; 15 : la médiane est bien 10.<br>D'où <b>x = 10</b>."}]
+};
+
+/* ---------- Défis (Groupe 3 · Approfondissement) ---------- */
+const DF={open:{}};
+function defisDone(n){DB.defis=DB.defis||{};DB.defis[n]=DB.defis[n]||{};return DB.defis[n]}
+function defisCardHTML(n){
+  if(!DEFIS[n])return '';const r=posiRec(n),g=r?posiGroupe(r.score):null,g3=g&&g.k===3;
+  const d=defisDone(n),k=Object.keys(d).length;
+  return `<section class="card sharecard" style="border-top:6px solid ${g3?'var(--gold)':'var(--line,#ddd)'}"><div style="font-size:40px;line-height:1">🏅</div>
+    <div class="txt"><p class="eyebrow">Défis type Olympiades${g3?' · conseillé pour ton groupe':''}</p>
+    <p class="small">${DEFIS[n].length} problèmes pour chercher, raisonner et aller plus loin${g3?' : ton groupe <b>Approfondissement</b> est fait pour ça':''}. ${k?`<b>${k}/${DEFIS[n].length} résolu${k>1?'s':''}</b>.`:''}</p></div>
+    <button class="btn ${g3?'gold':''}" data-act="defis" data-n="${n}">Relever les défis</button></section>`;
+}
+function defisHTML(){
+  const n=S.niv,L=DEFIS[n]||[],d=defisDone(n),k=Object.keys(d).length;
+  return `<div class="chap-head"><p class="eyebrow">${n} · Défis type Olympiades</p><h1>Cherche, raisonne, rédige</h1>
+    <p class="small">Prends une feuille et cherche vraiment avant d'ouvrir l'indice. Rédige ta solution avec <b>On sait que… Or… Donc…</b>, puis compare avec la correction.</p>
+    <button class="btn ghost" style="align-self:flex-start;padding:6px 12px;font-size:13px" data-act="level" data-n="${n}">← Tous les chapitres de ${n}</button></div>
+  <section class="card"><p class="small"><b>${k}/${L.length} défi${k>1?'s':''} résolu${k>1?'s':''}</b></p><div class="progress"><span style="width:${L.length?Math.round(k/L.length*100):0}%"></span></div></section>
+  ${L.map((x,i)=>{const o=DF.open[n+i]||'',ok=!!d[i];return `<section class="card" style="display:flex;flex-direction:column;gap:10px;${ok?'border-left:6px solid var(--green,#2e7d32)':''}">
+    <p class="eyebrow">Défi ${i+1}${ok?' · ✅ résolu':''}</p><h2 style="margin:0">${x.t}</h2><p>${x.e}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost" data-act="df-ind" data-i="${i}">${o==='i'?'Masquer':'💡 Indice'}</button>
+      <button class="btn ghost" data-act="df-sol" data-i="${i}">${o==='s'?'Masquer':'📖 Solution'}</button>
+      <button class="btn ${ok?'ghost':'gold'}" data-act="df-ok" data-i="${i}">${ok?'Annuler':'J\'ai résolu !'}</button></div>
+    ${o==='i'?`<div class="remarque"><p>💡 ${x.i}</p></div>`:''}
+    ${o==='s'?`<div class="exemple"><p>${x.s}</p></div>`:''}</section>`}).join('')}`;
+}
+function defisAct(a,b){
+  const n=S.niv,i=+b.dataset.i,key=n+i;
+  if(a==='df-ind')DF.open[key]=DF.open[key]==='i'?'':'i';
+  if(a==='df-sol')DF.open[key]=DF.open[key]==='s'?'':'s';
+  if(a==='df-ok'){const d=defisDone(n);if(d[i])delete d[i];else{d[i]=Date.now();toast('Bravo ! Défi '+(i+1)+' résolu');
+    track({type:'Défi',code:n+'-DEF',chapitre:'Défi '+(i+1)+' · '+DEFIS[n][i].t,note:1,sur:1,revoir:''})}save()}
 }
 
 /* =====================================================================
@@ -4097,7 +4164,7 @@ function render(){
   document.getElementById('homebtn').hidden=S.view==='home';
   document.getElementById('sub').textContent=DB.profil?`${eleve()} · ${DB.profil.classe||DB.profil.niveau}`:'Maths au collège · 6e · 5e · 4e · 3e';
   const app=document.getElementById('app');
-  app.innerHTML=S.view==='home'?homeHTML():S.view==='level'?levelHTML():S.view==='guide'?guideHTML():S.view==='prof'?profHTML():S.view==='rank'?rankHTML():S.view==='posi'?posiHTML():chapHTML();
+  app.innerHTML=S.view==='home'?homeHTML():S.view==='level'?levelHTML():S.view==='guide'?guideHTML():S.view==='prof'?profHTML():S.view==='rank'?rankHTML():S.view==='posi'?posiHTML():S.view==='defis'?defisHTML():chapHTML();
   const qh=document.getElementById('qrhome');if(qh)makeQR(qh,150);
   document.querySelectorAll('[data-qr]').forEach(e=>makeQR(e,170));
 }
@@ -4152,6 +4219,7 @@ function levelHTML(){
   return `<div class="chap-head"><p class="eyebrow">Mathématiques · ${L.nom}</p><h1>Programme de ${n}</h1>
     <p class="small">${s.tot} chapitres dans l'ordre de la progression · ${s.av} disponible${s.av>1?'s':''} aujourd'hui, les autres arrivent au fil des cours.</p></div>
   ${posiCardHTML(n)}
+  ${defisCardHTML(n)}
   ${GUIDE[n]?`<section class="card guidecard"><img src="${LOGO}" alt=""><div><p class="eyebrow">Guide de l'année</p><b>Organisation, progression, calendrier, méthode</b><p class="small">Tout le diaporama de la rentrée, à relire quand tu veux.</p></div><button class="btn gold" data-act="guide" data-n="${n}">Ouvrir</button></section>`:''}
   ${weakHTML(n)}
   <section class="clist">${rows}</section>
@@ -4259,16 +4327,23 @@ function evalHTML(c,unlocked){
     <button class="btn gold" data-act="tab" data-t="quiz">Aller au quiz</button></section>`;
   if(!DB.profil||(trackOn()&&!DB.profil.pseudo))return profilForm(DB.profil?"Nouveau : choisis ton pseudo et ton code secret avant l'évaluation.":"Pour que ta fiche de résultats porte ton nom, présente-toi avant l'évaluation.");
   if(!E)return `<section class="card" style="display:flex;flex-direction:column;gap:14px">
-    <p class="eyebrow">Évaluation · ${c.titre}</p><h2>10 questions, notées sur 20</h2>
+    ${offHead(c)}
+    <div class="tablewrap"><table class="ct"><tr><th>Exercice</th><th>Questions</th><th>Barème</th></tr>
+      <tr><td>Exercice 1</td><td>1 à 5</td><td>5 × 2 pts = 10 pts</td></tr><tr><td>Exercice 2</td><td>6 à 10</td><td>5 × 2 pts = 10 pts</td></tr></table></div>
     <ul style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px">
-      <li>Chaque bonne réponse rapporte 2 points.</li><li>Pas de correction pendant l'évaluation : elle s'affiche à la fin.</li>
-      <li>Utilise ton brouillon et prends ton temps.</li><li>À la fin, envoie ta fiche à M. Thiam.</li></ul>
+      <li>Une seule réponse juste par question. Cherche au brouillon en rédigeant : On sait que… Or… Donc… D'où…</li><li>Pas de correction pendant l'évaluation : elle s'affiche à la fin.</li>
+      <li>Calculatrice interdite. Travaille seul(e).</li><li>À la fin, envoie ta fiche à M. Thiam.</li></ul>
     <p class="small">Élève : <b>${esc(eleve())}</b> · ${esc(DB.profil.classe||DB.profil.niveau)}</p>
     <button class="btn gold" data-act="eval-start">Commencer l'évaluation</button></section>`;
   const q=E.qs[E.i];
-  return `<section class="card qcard">${qHTML(q,{picked:E.picked[E.i]},'eval',E.i,10)}
+  return `<p class="eyebrow">Exercice ${E.i<5?1:2} · question ${E.i+1} · 2 points</p><section class="card qcard">${qHTML(q,{picked:E.picked[E.i]},'eval',E.i,10)}
     <button class="btn gold" data-act="eval-next" ${E.picked[E.i]==null?'disabled':''}>${E.i===9?"Terminer l'évaluation":'Valider et continuer'}</button></section>`;
 }
+function offHead(c){return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;line-height:1.35;border-bottom:2px solid var(--blue);padding-bottom:6px">
+  <div class="center">RÉPUBLIQUE DU SÉNÉGAL<br>Un Peuple – Un But – Une Foi<br>Ministère de l'Éducation nationale</div>
+  <div style="text-align:right">Année scolaire 2026-2027<br>CEM John F. Kennedy<br>Classe : <b>${c.niv}</b> · Noté sur 20</div></div>
+  <p class="eyebrow center" style="margin-top:4px">${REG[c.id]&&REG[c.id].monthly?'Évaluation formative du mois':'Évaluation de chapitre'}</p>
+  <h2 class="center" style="margin:0">${c.titre}</h2>`}
 function sheetHTML(c,R,fromEval){
   const [men,cls]=mentionOf(R.note),s=st(c.id);
   const toReview=[...new Set(R.items.filter(x=>!x.ok).map(x=>x.skill))];
@@ -4277,9 +4352,11 @@ function sheetHTML(c,R,fromEval){
   return `<section class="sheet pop">
     <div class="sheet-top"><img src="${LOGO}" alt="Logo Profdemaths 2.0"><div><b>Fiche de résultats</b><small>Profdemaths 2.0 · à envoyer à M. Thiam</small></div></div>
     <div class="sheet-body">
+      <p class="small center" style="line-height:1.35">République du Sénégal · Ministère de l'Éducation nationale<br>CEM John F. Kennedy · Année scolaire 2026-2027</p>
       <div class="idgrid"><span>Élève</span><b>${esc(R.eleve)}</b><span>Classe</span><b>${esc(R.classe)}</b><span>Chapitre</span><b>${c.titre} (${c.niv})</b><span>Date</span><b>${R.date}</b><span>Durée</span><b>${R.duree}</b><span>Tentative</span><b>n° ${R.attempt}</b></div>
       <div class="notebox"><p class="big">${R.note}<span style="font-size:22px"> / 20</span></p><span class="mention ${cls}">${men}</span><span class="small">${R.items.filter(x=>x.ok).length} bonnes réponses sur 10</span></div>
       <div class="qgrid">${R.items.map((x,i)=>`<div class="qcell ${x.ok?'ok':'ko'}">Q${i+1} ${x.ok?'✓':'✗'}</div>`).join('')}</div>
+      <p style="font-size:14.5px"><b>Exercice 1 :</b> ${R.items.slice(0,5).filter(x=>x.ok).length*2}/10 · <b>Exercice 2 :</b> ${R.items.slice(5).filter(x=>x.ok).length*2}/10</p>
       <p style="font-size:14.5px"><b>${toReview.length?'À revoir :':'Toutes les compétences sont réussies.'}</b> ${toReview.join(' · ')}</p>
     </div></section>
   ${bulle('Dernière étape',`<p>Envoie cette fiche à M. Thiam : bouton WhatsApp ci-dessous, ou <b>capture d'écran</b>. ${R.note>=14?`Félicitations${pn}, excellent travail !`:R.note>=10?`C'est bien${pn} : revois les points indiqués pour progresser encore.`:`Ne te décourage pas${pn} : entraîne-toi sur les points à revoir et refais le quiz.`}</p>`)}
@@ -4305,6 +4382,8 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,cid=S.cid,s=cid?st(cid):null;
   if(a==='posi'){S.view='posi';S.niv=b.dataset.n;PS.review=false;PS.run=null;render();window.scrollTo(0,0);return}
+  if(a==='defis'){S.view='defis';S.niv=b.dataset.n;render();window.scrollTo(0,0);return}
+  if(a&&a.startsWith('df-')){defisAct(a,b);render();return}
   if(a&&a.startsWith('pos-')){posiAct(a,b);render();if(a!=='pos-pick'&&a!=='pos-review')window.scrollTo({top:0,behavior:'smooth'});return}
   if(a==='share'){openShare();return}
   if(a==='close-modal'){document.getElementById('modal').hidden=true;return}
