@@ -3637,6 +3637,13 @@ async function retryPseudo(){const P=DB.profil;if(!trackOn()||!P||P.ok||!P.pseud
   const r=await registerPseudo(P,P.pinTmp);if(r&&r.ok){P.ok=true;delete P.pinTmp;save()}else if(r&&!r.ok){P.ok=false;P.pseudo='';delete P.pinTmp;save();render();toast("Ton pseudo est déjà pris : choisis-en un autre.")}}
 window.addEventListener('online',()=>{flushQueue();retryPseudo()});
 setTimeout(retryPseudo,2500);
+/* compte supprimé par le professeur : le téléphone oublie le profil */
+function checkCompte(){const P=DB.profil;if(!trackOn()||!P||!P.pseudo||!navigator.onLine)return;
+  const cb='__pdme'+Date.now(),sc=document.createElement('script');
+  window[cb]=d=>{delete window[cb];sc.remove();if(d&&d.ok&&d.supprime&&DB.profil&&DB.profil.pseudo===P.pseudo){DB.queue=(DB.queue||[]).filter(x=>x.pseudo!==P.pseudo);resetPhone('Ce compte a été supprimé par M. Thiam.')}};
+  sc.onerror=()=>{delete window[cb];sc.remove()};
+  sc.src=TRACK_URL+'?action=etat&pseudo='+encodeURIComponent(P.pseudo)+'&callback='+cb;document.body.appendChild(sc)}
+setTimeout(checkCompte,3500);
 setTimeout(flushQueue,1500);
 
 /* ---- espace professeur ---- */
@@ -3657,6 +3664,19 @@ function loadProf(code,remember){
     done()};
   s.onerror=()=>{clearTimeout(timer);PR.err="Impossible de joindre le serveur de suivi.";done()};
   s.src=TRACK_URL+'?code='+encodeURIComponent(code)+'&callback='+cb;document.body.appendChild(s);
+}
+function delBtnHTML(k,lab,pseudo,eleve,classe){
+  if(PR.del===k)return `<span class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm" style="background:#b3261e;color:#fff" data-act="prof-del-ok" data-p="${esc(pseudo||'')}" data-e="${esc(eleve||'')}" data-c="${esc(classe||'')}" ${PR.delBusy?'disabled':''}>${PR.delBusy?'Suppression…':'Oui, supprimer '+esc(lab)}</button><button class="btn ghost sm" data-act="prof-del-no">Annuler</button></span>`;
+  return `<button class="btn ghost sm" data-act="prof-del" data-k="${esc(k)}" title="Supprimer">🗑 Supprimer</button>`;
+}
+function profDelete(pseudo,eleve,classe){
+  PR.delBusy=true;render();
+  const cb='__pdmd'+Date.now(),s=document.createElement('script');
+  const end=(msg)=>{PR.delBusy=false;PR.del=null;delete window[cb];s.remove();toast(msg);if(PR.eleve)PR.eleve=null;loadProf(PR.code,false)};
+  const timer=setTimeout(()=>end("Pas de réponse du serveur : réessaie."),20000);
+  window[cb]=d=>{clearTimeout(timer);end(d&&d.ok?"Élève supprimé ("+(d.lignes||0)+" ligne"+((d.lignes||0)>1?'s':'')+" placée"+((d.lignes||0)>1?'s':'')+" dans la Corbeille)":(d&&d.erreur)||"Suppression refusée.")};
+  s.onerror=()=>{clearTimeout(timer);end("Impossible de joindre le serveur de suivi.")};
+  s.src=TRACK_URL+'?code='+encodeURIComponent(PR.code)+'&action=supprimer&pseudo='+encodeURIComponent(pseudo||'')+'&eleve='+encodeURIComponent(eleve||'')+'&classe='+encodeURIComponent(classe||'')+'&callback='+cb;document.body.appendChild(s);
 }
 const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length*10)/10:null;
 const fmt=v=>v===null?'—':String(v).replace('.',',');
@@ -3719,6 +3739,10 @@ function profHTML(){
     <p class="small">Ces élèves ont créé leur profil mais n'ont encore terminé aucun quiz ni aucune évaluation.</p>
     <div class="tablewrap"><table class="bilan"><tr><th>Élève</th><th>Pseudo</th>${PR.cl?'':'<th>Classe</th>'}<th>Inscrit le</th><th>Dernière connexion</th></tr>
     ${sansAct.map(x=>`<tr><td><b>${esc(x.prenom)} ${esc(x.nom)}</b></td><td>@${esc(x.p)}</td>${PR.cl?'':`<td>${esc(x.c)}</td>`}<td>${esc(x.le)}</td><td>${esc(x.vu)}</td></tr>`).join('')}</table></div></section>`:''}
+  ${insC.length?`<details class="card" ${PR.del&&String(PR.del).startsWith('i:')?'open':''}><summary style="cursor:pointer;font-weight:700">🗑 Gérer les élèves inscrits${PR.cl?' · '+esc(PR.cl):''} (${insC.length})</summary>
+    <p class="small" style="margin:10px 0">Supprimer un élève retire son inscription et ses résultats du suivi (ils sont rangés dans l'onglet <b>Corbeille</b> de votre feuille Google, rien n'est perdu). Son pseudo ne pourra plus envoyer de résultats.</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+    ${insC.slice().sort((a,b)=>(a.c+a.nom+a.prenom).localeCompare(b.c+b.nom+b.prenom)).map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid rgba(128,128,128,.25);padding:6px 0"><div><b>${esc(x.prenom)} ${esc(x.nom)}</b><br><span class="small">@${esc(x.p)} · ${esc(x.c)}</span></div>${delBtnHTML('i:'+x.p,x.prenom+' '+x.nom,x.p,'','')}</div>`).join('')}</div></details>`:''}
   ${(()=>{const cnt={};R.filter(r=>r.Type!=='Test de positionnement').forEach(r=>{String(r['Compétences à revoir']||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(sk=>{const k=r.Chapitre+'||'+sk;(cnt[k]=cnt[k]||new Set()).add(r.K)})});
     const top=Object.entries(cnt).map(([k,s])=>({ch:k.split('||')[0],sk:k.split('||')[1],n:s.size})).sort((a,b)=>b.n-a.n).slice(0,8);
     return top.length?`<section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">Compétences à retravailler en classe</p>
@@ -3735,6 +3759,7 @@ function profEleveHTML(l){
   l=l.slice().sort((a,b)=>b.ts-a.ts);const f=l[0]||{};
   return `<button class="btn ghost sm" data-act="prof-back" style="align-self:flex-start">‹ Retour à la classe</button>
   <div class="chap-head"><p class="eyebrow">${esc(f.Classe||'')} · ${l.length} activités</p><h1>${esc(PR.eleve)}</h1></div>
+  <section class="card row" style="justify-content:space-between;gap:10px;flex-wrap:wrap"><p class="small">Élève qui a quitté la classe, compte en double ou compte de test ?</p>${delBtnHTML('e:'+PR.eleve,f['Élève']||PR.eleve,f.Pseudo||'',f['Élève']||'',f.Classe||'')}</section>
   <section class="card"><div class="tablewrap"><table class="bilan"><tr><th>Date</th><th>Type</th><th>Chapitre</th><th>Note</th><th>/20</th><th>À revoir</th></tr>
   ${l.map(r=>`<tr><td>${esc(r.Date)} ${esc(r.Heure)}</td><td>${esc(r.Type)}</td><td>${esc(r.Chapitre)}</td><td>${esc(r.Note)}/${esc(r.Sur)}</td><td>${pillN(r.n20)}</td><td class="small">${esc(r['Compétences à revoir'])||'—'}</td></tr>`).join('')}</table></div></section>`;
 }
@@ -3863,7 +3888,7 @@ function posiSuiviHTML(n,compact){
 }
 function posiQs(n){const out=[];POSI[n].doms.forEach((d,k)=>d.qs.forEach(q=>out.push({dom:k,q:q[0],ch:q[1],good:q[2],ex:q[3]})));return out}
 function posiCardHTML(n){
-  if(!POSI[n])return '';const r=posiRec(n);
+  if(!POSI[n])return '';if(DB.profil&&DB.profil.niveau&&DB.profil.niveau!==n)return '';const r=posiRec(n);
   if(r&&DB.profil&&DB.profil.niveau===n)return posiSuiviHTML(n,true);
   const must=!r&&DB.profil&&DB.profil.niveau===n;
   return `${must?bulle('Première étape obligatoire',`<p>Avant de commencer les chapitres de ${n}, passe le <b>test de positionnement</b>. Il te place dans ton <b>groupe de besoin</b>.</p>`):''}<section class="card sharecard" style="border-top:6px solid var(--blue)"><div style="font-size:40px;line-height:1">🎯</div>
@@ -3995,7 +4020,7 @@ const DEFIS={
 const DF={open:{}};
 function defisDone(n){DB.defis=DB.defis||{};DB.defis[n]=DB.defis[n]||{};return DB.defis[n]}
 function defisCardHTML(n){
-  if(!DEFIS[n])return '';const r=posiRec(n),g=r?posiGroupe(r.score):null,g3=g&&g.k===3;
+  if(!DEFIS[n]||!canNiv(n))return '';const r=posiRec(n),g=r?posiGroupe(r.score):null,g3=g&&g.k===3;
   const d=defisDone(n),k=Object.keys(d).length;
   return `<section class="card sharecard" style="border-top:6px solid ${g3?'var(--gold)':'var(--line,#ddd)'}"><div style="font-size:40px;line-height:1">🏅</div>
     <div class="txt"><p class="eyebrow">Défis type Olympiades${g3?' · conseillé pour ton groupe':''}</p>
@@ -4087,6 +4112,11 @@ let DB=load();
 function save(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}}
 const rec=cid=>DB.ch[cid]||(DB.ch[cid]={ok:0,tot:0,best:null,evals:[]});
 const SEUIL=7;
+const ORD=['6e','5e','4e','3e'];
+/* un élève voit son niveau et les niveaux d'avant (révisions), jamais les niveaux au-dessus */
+function canNiv(n){const p=DB.profil;return !p||!p.niveau||ORD.indexOf(n)<=ORD.indexOf(p.niveau)}
+function nivLock(n){toast('La '+n+' est réservée aux élèves de '+n+'. Ton niveau : '+DB.profil.niveau+'.')}
+function resetPhone(msg){const q=DB.queue||[];DB={v:1,profil:null,ch:{},queue:q};save();S.view='home';S.editProfil=false;S.askOut=false;S.draft=null;render();window.scrollTo(0,0);if(msg)toast(msg)}
 const prenom=()=>DB.profil?DB.profil.prenom:'';
 const eleve=()=>DB.profil?`${DB.profil.prenom} ${DB.profil.nom.toUpperCase()}${DB.profil.pseudo?' (@'+DB.profil.pseudo+')':''}`:'';
 
@@ -4147,7 +4177,8 @@ function profilForm(why){
     <div class="form">
       <label>Prénom<input id="pf-prenom" autocomplete="given-name" value="${esc(p.prenom)}" placeholder="Ex. : Awa"></label>
       <label>Nom<input id="pf-nom" autocomplete="family-name" value="${esc(p.nom)}" placeholder="Ex. : Diop"></label>
-      <label>Niveau<select id="pf-niv">${['6e','5e','4e','3e'].map(n=>`<option value="${n}" ${p.niveau===n?'selected':''}>${n} (${LV[n].nom})</option>`).join('')}</select></label>
+      <label>Niveau<select id="pf-niv" ${DB.profil&&DB.profil.niveau?'disabled':''}>${['6e','5e','4e','3e'].map(n=>`<option value="${n}" ${p.niveau===n?'selected':''}>${n} (${LV[n].nom})</option>`).join('')}</select></label>
+      ${DB.profil&&DB.profil.niveau?`<p class="small" style="grid-column:1/-1">Ton niveau ne peut pas être changé ici : demande à M. Thiam.</p>`:''}
       <label>Mon pseudo<input id="pf-pseudo" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" value="${esc(p.pseudo||'')}" placeholder="Ex. : awa_maths"></label>
       <label>Mon code secret (4 chiffres)<input id="pf-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••" value="${esc(S.draft&&S.draft.pin||'')}"></label>
       <label>Classe<select id="pf-classe">${'ABCDEFGH'.split('').map(L=>`<option value="${L}" ${(p.classe||'').toUpperCase().endsWith(L)?'selected':''}>${L}</option>`).join('')}</select></label>
@@ -4182,7 +4213,8 @@ function homeHTML(){
   </section>
   ${!p||S.editProfil||(trackOn()&&!p.pseudo)?profilForm(!p?'Avant de commencer, présente-toi : ton nom apparaîtra sur tes fiches de résultats.':!p.pseudo?'Nouveau : choisis ton pseudo et ton code secret.':''):`<section class="card row" style="justify-content:space-between">
     <div><p class="eyebrow">Mon profil</p><p style="margin-top:4px"><b style="color:var(--ink)">${esc(eleve())}</b> · ${esc(p.classe||p.niveau)}</p></div>
-    <button class="btn ghost" data-act="edit-profil">Modifier</button></section>`}
+    <div class="row" style="gap:8px;flex-wrap:wrap">${S.askOut?`<button class="btn" style="background:#b3261e;color:#fff" data-act="logout-ok">Oui, me déconnecter</button><button class="btn ghost" data-act="logout-no">Annuler</button>`:`<button class="btn ghost" data-act="edit-profil">Modifier</button><button class="btn ghost" data-act="logout">Se déconnecter</button>`}</div></section>
+  ${S.askOut?`<section class="card"><p class="small">Ce téléphone oubliera ton profil et ta progression. Tes notes déjà envoyées à M. Thiam sont conservées : pour retrouver ton suivi, reconnecte-toi avec <b>ton pseudo et ton code secret</b>.</p></section>`:''}`}
   ${installHTML()}${rankCardHTML()}${p&&p.niveau?weakHTML(p.niveau,'Mes points faibles en '+p.niveau):''}
   <section class="levels">${['6e','5e','4e','3e'].map(n=>{const s=lvlStats(n);return `<article class="card lvl ${mine===n?'mine':''}" style="--lc:${LV[n].color}">
     ${mine===n?'<span class="badge">Mon niveau</span>':''}
@@ -4190,7 +4222,7 @@ function homeHTML(){
     <p class="small">${s.tot} chapitres au programme · <b>${s.av} disponible${s.av>1?'s':''}</b></p>
     <div class="bar" aria-label="Chapitres évalués"><span style="width:${s.av?Math.round(s.done/s.tot*100):0}%"></span></div>
     <p class="small">${s.done} chapitre${s.done>1?'s':''} évalué${s.done>1?'s':''}</p>
-    <button class="btn ${mine===n?'gold':''}" data-act="level" data-n="${n}">Ouvrir la ${n}</button></article>`}).join('')}</section>
+    ${canNiv(n)?`<button class="btn ${mine===n?'gold':''}" data-act="level" data-n="${n}">Ouvrir la ${n}</button>`:`<button class="btn ghost" disabled style="opacity:.6">🔒 Réservé aux élèves de ${n}</button>`}</article>`}).join('')}</section>
   <section class="card">
     <p class="eyebrow">Comment progresser</p>
     <div class="steps" style="margin-top:12px">
@@ -4381,8 +4413,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementB
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,cid=S.cid,s=cid?st(cid):null;
-  if(a==='posi'){S.view='posi';S.niv=b.dataset.n;PS.review=false;PS.run=null;render();window.scrollTo(0,0);return}
-  if(a==='defis'){S.view='defis';S.niv=b.dataset.n;render();window.scrollTo(0,0);return}
+  if(a==='posi'){if(DB.profil&&DB.profil.niveau&&DB.profil.niveau!==b.dataset.n){toast('Ton test de positionnement est celui de '+DB.profil.niveau+'.');return}S.view='posi';S.niv=b.dataset.n;PS.review=false;PS.run=null;render();window.scrollTo(0,0);return}
+  if(a==='defis'){if(!canNiv(b.dataset.n)){nivLock(b.dataset.n);return}S.view='defis';S.niv=b.dataset.n;render();window.scrollTo(0,0);return}
   if(a&&a.startsWith('df-')){defisAct(a,b);render();return}
   if(a&&a.startsWith('pos-')){posiAct(a,b);render();if(a!=='pos-pick'&&a!=='pos-review')window.scrollTo({top:0,behavior:'smooth'});return}
   if(a==='share'){openShare();return}
@@ -4391,7 +4423,10 @@ document.addEventListener('click',e=>{
   if(a==='copy-result'){if(s&&s.sheet)copyText(resultText(chapInfo(cid),s.sheet),'Résultat copié : colle-le dans WhatsApp');return}
   S.err='';
   if(a==='home'){S.view='home';S.editProfil=false}
-  else if(a==='edit-profil'){S.editProfil=true}
+  else if(a==='edit-profil'){S.editProfil=true;S.askOut=false}
+  else if(a==='logout'){S.askOut=true}
+  else if(a==='logout-no'){S.askOut=false}
+  else if(a==='logout-ok'){resetPhone('Déconnecté : ce téléphone est prêt pour un autre élève.');return}
   else if(a==='cancel-profil'){S.editProfil=false}
   else if(a==='save-profil'){
     if(S.busy)return;
@@ -4400,7 +4435,7 @@ document.addEventListener('click',e=>{
     const pin=v('pf-pin');S.draft=Object.assign({},P,{pin,classe:v('pf-classe')});
     if(!P.prenom||!P.nom){S.err="Écris ton prénom et ton nom.";render();return}
     if(!/^[a-z0-9_.-]{3,20}$/.test(P.pseudo)){S.err="Choisis un pseudo de 3 à 20 caractères : lettres sans accent, chiffres, point, tiret ou _.";render();return}
-    const old=DB.profil;
+    const old=DB.profil;if(old&&old.niveau)P.niveau=old.niveau;
     if(!/^\d{4}$/.test(pin)&&!(old&&old.pseudo===P.pseudo&&old.ok)){S.err="Choisis un code secret de 4 chiffres.";render();return}
     P.classe=P.niveau.replace('e','')+(P.classe||'A');
     const finish=(ok)=>{const first=!old;S.draft=null;P.ok=ok;if(!ok)P.pinTmp=pin;DB.profil=P;save();S.editProfil=false;S.busy=false;S.err='';
@@ -4412,20 +4447,24 @@ document.addEventListener('click',e=>{
     registerPseudo(P,pin).then(r=>{
       if(r===null){finish(false);return}
       if(!r.ok){S.busy=false;S.err=r.erreur||"Ce pseudo n'est pas disponible.";render();return}
+      if(r.niveau&&ORD.includes(r.niveau)){P.niveau=r.niveau;if(r.classe)P.classe=String(r.classe).toUpperCase()}
       finish(true)});
     return;
   }
-  else if(a==='level'){S.view='level';S.niv=b.dataset.n}
+  else if(a==='level'){if(!canNiv(b.dataset.n)){nivLock(b.dataset.n);return}S.view='level';S.niv=b.dataset.n}
   else if(a==='prof-open'){S.view='prof';PR.eleve=null;const c=profCode();if(c&&!PR.rows&&!PR.loading){render();loadProf(c,true);return}}
   else if(a==='prof-login'){const c=document.getElementById('pr-code').value.trim();if(!c){PR.err='Écris le code professeur.'}else{loadProf(c,document.getElementById('pr-rem').checked);return}}
   else if(a==='prof-refresh'){loadProf(PR.code,false);return}
+  else if(a==='prof-del'){PR.del=b.dataset.k}
+  else if(a==='prof-del-no'){PR.del=null}
+  else if(a==='prof-del-ok'){if(!PR.delBusy)profDelete(b.dataset.p,b.dataset.e,b.dataset.c);return}
   else if(a==='prof-logout'){PR.rows=null;PR.code='';PR.eleve=null;try{localStorage.removeItem('pdm_prof_code')}catch(e){}}
   else if(a==='prof-cl'){PR.cl=b.dataset.c;PR.eleve=null}
   else if(a==='prof-eleve'){PR.eleve=b.dataset.e;window.scrollTo(0,0)}
   else if(a==='prof-back'){PR.eleve=null}
   else if(a==='guide'){S.view='guide';S.niv=b.dataset.n;S.gi=null;window.scrollTo(0,0)}
   else if(a==='gs'){S.gi=b.dataset.i===''?null:+b.dataset.i;window.scrollTo(0,0)}
-  else if(a==='open'){const nv=b.dataset.c.split('-')[0];if(DB.profil&&DB.profil.niveau===nv&&POSI[nv]&&!posiRec(nv)){S.view='posi';S.niv=nv;PS.run=null;toast('Passe d\'abord ton test de positionnement : il te place dans ton groupe de besoin.')}else{S.view='chap';S.cid=b.dataset.c;S.niv=nv;S.tab='cours'}}
+  else if(a==='open'){const nv=b.dataset.c.split('-')[0];if(!canNiv(nv)){nivLock(nv);return}if(DB.profil&&DB.profil.niveau===nv&&POSI[nv]&&!posiRec(nv)){S.view='posi';S.niv=nv;PS.run=null;toast('Passe d\'abord ton test de positionnement : il te place dans ton groupe de besoin.')}else{S.view='chap';S.cid=b.dataset.c;S.niv=nv;S.tab='cours'}}
   else if(a==='tab'){S.tab=b.dataset.t;if(S.tab==='eval'&&s.sheet&&!(s.eval&&s.eval.done))s.sheet=null}
   else if(a==='rank'){S.view='rank';window.scrollTo(0,0);loadRank();return}
   else if(a==='rk-per'){RK.per=b.dataset.k}
