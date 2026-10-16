@@ -4325,7 +4325,7 @@ function chapHTML(){
     return `<div class="chap-head"><p class="eyebrow">${c.tag}</p><h1>${c.titre}</h1>
     <p class="small">Chapitres évalués : ${names.join(' · ')}</p>
     <button class="btn ghost" style="align-self:flex-start;padding:6px 12px;font-size:13px" data-act="level" data-n="${c.niv}">← Tous les chapitres de ${c.niv}</button></div>
-    <div style="display:flex;flex-direction:column;gap:18px">${evalHTML(c,true)}</div>`}
+    <div style="display:flex;flex-direction:column;gap:18px">${evalHTML(c,true)}</div>${mensP2HTML(c)}`}
   const c=chapInfo(S.cid),R=REG[S.cid],r=rec(S.cid),unlocked=r.best!==null&&r.best>=SEUIL;
   const tabs=[['cours','Cours'],['train',"S'entraîner"],['quiz','Quiz'],['eval','Évaluation']];
   let body='';
@@ -4392,7 +4392,7 @@ function evalHTML(c,unlocked){
   if(!E)return `<section class="card" style="display:flex;flex-direction:column;gap:14px">
     ${offHead(c)}
     <div class="tablewrap"><table class="ct"><tr><th>Exercice</th><th>Questions</th><th>Barème</th></tr>
-      <tr><td>Exercice 1</td><td>1 à 5</td><td>5 × 2 pts = 10 pts</td></tr><tr><td>Exercice 2</td><td>6 à 10</td><td>5 × 2 pts = 10 pts</td></tr></table></div>
+      <tr><td>Exercice 1</td><td>1 à 5</td><td>5 × 2 pts = 10 pts</td></tr><tr><td>Exercice 2</td><td>6 à 10</td><td>5 × 2 pts = 10 pts</td></tr></table></div>${REG[c.id]&&REG[c.id].monthly?`<p class="small"><b>Partie I · QCM</b> (ci-dessus, corrigé tout de suite, sur 20). <b>Partie II · exercices rédigés</b> : le sujet officiel du mois, à rendre en photo (plus bas), corrigé par ton professeur. Après la Partie I, ton groupe de besoin est mis à jour.</p>`:''}
     <ul style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px">
       <li>Une seule réponse juste par question. Cherche au brouillon en rédigeant : On sait que… Or… Donc… D'où…</li><li>Pas de correction pendant l'évaluation : elle s'affiche à la fin.</li>
       <li>Calculatrice interdite. Travaille seul(e).</li><li>À la fin, envoie ta fiche à M. Thiam.</li></ul>
@@ -4403,8 +4403,8 @@ function evalHTML(c,unlocked){
     <button class="btn gold" data-act="eval-next" ${E.picked[E.i]==null?'disabled':''}>${E.i===9?"Terminer l'évaluation":'Valider et continuer'}</button></section>`;
 }
 function offHead(c){return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;line-height:1.35;border-bottom:2px solid var(--blue);padding-bottom:6px">
-  <div class="center">RÉPUBLIQUE DU SÉNÉGAL<br>Un Peuple – Un But – Une Foi<br>Ministère de l'Éducation nationale</div>
-  <div style="text-align:right">Année scolaire 2026-2027<br>CEM John F. Kennedy<br>Classe : <b>${c.niv}</b> · Noté sur 20</div></div>
+  <div class="center">RÉPUBLIQUE DU SÉNÉGAL<br>Un Peuple – Un But – Une Foi<br><b>IA de Dakar – IEF de Dakar-Plateau</b></div>
+  <div style="text-align:right">Année scolaire 2026-2027<br>CEM John Fitzgerald Kennedy<br>Cellule de Mathématiques · Classe : <b>${c.niv}</b></div></div>
   <p class="eyebrow center" style="margin-top:4px">${REG[c.id]&&REG[c.id].monthly?'Évaluation formative du mois':'Évaluation de chapitre'}</p>
   <h2 class="center" style="margin:0">${c.titre}</h2>`}
 function sheetHTML(c,R,fromEval){
@@ -4415,7 +4415,7 @@ function sheetHTML(c,R,fromEval){
   return `<section class="sheet pop">
     <div class="sheet-top"><img src="${LOGO}" alt="Logo Profdemaths 2.0"><div><b>Fiche de résultats</b><small>Profdemaths 2.0 · à envoyer à M. Thiam</small></div></div>
     <div class="sheet-body">
-      <p class="small center" style="line-height:1.35">République du Sénégal · Ministère de l'Éducation nationale<br>CEM John F. Kennedy · Année scolaire 2026-2027</p>
+      <p class="small center" style="line-height:1.35">République du Sénégal · IA de Dakar – IEF de Dakar-Plateau<br>CEM John Fitzgerald Kennedy · Année scolaire 2026-2027</p>
       <div class="idgrid"><span>Élève</span><b>${esc(R.eleve)}</b><span>Classe</span><b>${esc(R.classe)}</b><span>Chapitre</span><b>${c.titre} (${c.niv})</b><span>Date</span><b>${R.date}</b><span>Durée</span><b>${R.duree}</b><span>Tentative</span><b>n° ${R.attempt}</b></div>
       <div class="notebox"><p class="big">${R.note}<span style="font-size:22px"> / 20</span></p><span class="mention ${cls}">${men}</span><span class="small">${R.items.filter(x=>x.ok).length} bonnes réponses sur 10</span></div>
       <div class="qgrid">${R.items.map((x,i)=>`<div class="qcell ${x.ok?'ok':'ko'}">Q${i+1} ${x.ok?'✓':'✗'}</div>`).join('')}</div>
@@ -4525,7 +4525,7 @@ function loadDevoirs(force){const P=DB.profil;if(!trackOn()||!P||!P.pseudo||!P.c
   const done=()=>{DV.loading=false;delete window[cb];s.remove();if(S.view==='devoirs'||S.view==='home')softRender()};
   const timer=setTimeout(()=>{DV.err="Pas de réponse du serveur : voici les derniers devoirs chargés.";done()},20000);
   window[cb]=d=>{clearTimeout(timer);DV.at=Date.now();
-    if(d&&d.ok){DV.list=d.devoirs||[];DV.copies={};(d.copies||[]).forEach(c=>DV.copies[c.devoir]=c);DV.remed=d.remed||null;
+    if(d&&d.ok){DV.list=d.devoirs||[];(DV.list||[]).forEach(x=>{if(x.imgUrl)DV.fig[x.id]=x.imgUrl});DV.copies={};(d.copies||[]).forEach(c=>DV.copies[c.devoir]=c);DV.remed=d.remed||null;
       try{localStorage.setItem('pdm_devoirs',JSON.stringify({list:DV.list,copies:DV.copies,remed:DV.remed}))}catch(e){}}
     else DV.err=(d&&d.erreur)||"Devoirs indisponibles pour le moment.";done()};
   s.onerror=()=>{clearTimeout(timer);DV.err=navigator.onLine===false?"Pas de connexion : voici les derniers devoirs chargés.":"Impossible de joindre le serveur.";done()};
@@ -4590,23 +4590,6 @@ document.addEventListener('change',async e=>{const t=e.target;if(!t||!t.matches)
     try{FM.dv.img=await compressImg(f,1400,0.75)}catch(x){PR.e3="Cette image n'a pas pu être lue."}render()}
 });
 
-/* ---------------- remédiation : alerte pour l'élève ---------------- */
-function remedInfo(){const P=DB.profil;if(!P||!P.niveau)return null;
-  const loc=typeof POSI!=='undefined'&&POSI[P.niveau]?posiRec(P.niveau):null,srv=DV.remed&&DV.remed.pos;
-  let g=null,score=null,date='';
-  if(loc){g=posiGroupe(loc.score).k;score=loc.score;date=loc.date}
-  else if(srv){g=srv.groupe;score=srv.score;date=srv.date}
-  if(g!==1)return null;
-  return{score,date,cr:DV.remed&&DV.remed.creneau}}
-function remedAlertHTML(){const R=remedInfo();if(!R)return '';const P=DB.profil,cr=R.cr;
-  return `<section class="card" role="alert" style="display:flex;flex-direction:column;gap:10px;border:2px solid var(--red);border-top:8px solid var(--red)">
-    <p class="eyebrow" style="color:var(--red)">⚠️ Remédiation · 2 h chaque semaine</p>
-    <h2 style="font-size:20px;margin:0">${esc(P.prenom)}, tu es dans le groupe de remédiation</h2>
-    <p>Ton test de positionnement${R.score!=null?' ('+R.score+'/25)':''} montre des bases à reprendre. Tu dois suivre <b>2 heures de remédiation chaque semaine</b> avec ton professeur de maths.</p>
-    ${cr&&cr.creneau?`<div class="enonce" style="white-space:normal"><p>📅 <b>${esc(cr.creneau)}</b>${cr.lieu?' · 📍 '+esc(cr.lieu):''}</p>${cr.remarque?`<p class="small" style="margin-top:4px">${esc(cr.remarque)}</p>`:''}</div>`:`<p class="small">Ton professeur va t'indiquer le jour, l'heure et la salle.</p>`}
-    <p class="small">Entre les séances, travaille les chapitres de ton plan de rattrapage : quand tes résultats remontent, tu changes de groupe.</p>
-    ${typeof POSI!=='undefined'&&POSI[P.niveau]?`<div class="row"><button class="btn gold" data-act="posi" data-n="${P.niveau}">Voir mon plan de rattrapage</button></div>`:''}</section>`}
-
 /* ---------------- espace professeur ---------------- */
 function profClasses(){const me=PR.me||{admin:true,classes:[]};if(!me.admin)return me.classes.slice().sort(clsSort);
   const seen=(PR.rows||[]).map(r=>r.Classe).concat((PR.ins||[]).map(x=>x.c)).filter(c=>/^[3-6](?:[A-H]|HK)$/.test(c));
@@ -4625,13 +4608,13 @@ function profTabHTML(){const t=PR.tab;
   PR.tab='suivi';return ''}
 
 /* listes de classe + remédiation */
-function posiParEleve(){const by={};(PR.rows||[]).filter(r=>r.Type==='Test de positionnement').forEach(r=>{const p=String(r.Pseudo||'').toLowerCase();if(!p)return;if(!by[p]||r.ts>=by[p].ts)by[p]={ts:r.ts,sc:+String(r.Note).replace(',','.')||0,date:r.Date}});return by}
+function posiParEleve(){const by={};(PR.rows||[]).filter(r=>r.Type==='Test de positionnement'||r.Type==='Évaluation du mois').forEach(r=>{const p=String(r.Pseudo||'').toLowerCase();if(!p)return;const t=r.ts+(parseInt(String(r.Heure).replace(':',''),10)||0);if(by[p]&&t<by[p].t)return;const pos=r.Type==='Test de positionnement',sc=+String(r.Note).replace(',','.')||0;by[p]={t,sc,sur:pos?25:(+r.Sur||20),date:r.Date,k:pos?posiGroupe(sc).k:grpDeNote(r.n20),src:pos?'positionnement':'éval. du mois'}});return by}
 function profListesHTML(){
   const cls=profClasses(),INS=PR.ins||[],withIns=cls.filter(c=>INS.some(x=>x.c===c));
   let cl=PR.lcl;if(!cl||!cls.includes(cl))cl=PR.lcl=(withIns[0]||cls[0]||'');
   const pos=posiParEleve(),last={};(PR.rows||[]).forEach(r=>{const p=String(r.Pseudo||'').toLowerCase();if(p&&(!last[p]||r.ts>last[p].ts))last[p]={ts:r.ts,d:r.Date}});
   const L=INS.filter(x=>x.c===cl).sort((a,b)=>(a.nom+' '+a.prenom).localeCompare(b.nom+' '+b.prenom,'fr'));
-  const grp=x=>{const p=pos[x.p];return p?posiGroupe(p.sc):null};
+  const grp=x=>{const p=pos[x.p];return p?GROUPES[p.k-1]:null};
   const remL=L.filter(x=>{const g=grp(x);return g&&g.k===1}),sans=L.filter(x=>!pos[x.p]).length,hk=/HK$/.test(cl);
   const cr=(PR.remed||[]).find(r=>r.classe===cl)||{};
   if(!FM.rm||FM.rm.cl!==cl)FM.rm={cl,creneau:cr.creneau||'',lieu:cr.lieu||'',remarque:cr.remarque||''};
@@ -4640,14 +4623,14 @@ function profListesHTML(){
   <section class="card printzone" style="display:flex;flex-direction:column;gap:10px">
     <p class="eyebrow">${esc(ECOLE)} · Mathématiques · 2026-2027</p>
     <h2 style="margin:0">Classe ${esc(clsLab(cl))} · ${L.length} élève${L.length>1?'s':''}</h2>
-    <p class="small">${remL.length} en remédiation · ${sans} sans test de positionnement${hk?' · élèves venant d\'autres établissements':''}</p>
+    <p class="small">${remL.length} en remédiation · ${sans} sans évaluation (groupe mis à jour après chaque évaluation du mois)${hk?' · élèves venant d\'autres établissements':''}</p>
     ${L.length?`<div class="tablewrap"><table class="bilan"><tr><th>N°</th><th>Nom</th><th>Prénom</th><th>Pseudo</th>${hk?'<th>École d\'origine</th>':''}<th>Groupe</th><th>Dernière activité</th></tr>
-    ${L.map((x,i)=>{const g=grp(x),p=pos[x.p];return `<tr><td>${i+1}</td><td><b>${esc(x.nom)}</b></td><td>${esc(x.prenom)}</td><td>@${esc(x.p)}</td>${hk?`<td>${esc(x.ecole||'—')}</td>`:''}<td>${g?`<span class="pill ${g.c}">${g.k} · ${g.nom}</span> <span class="small">${p.sc}/25</span>`:'<span class="pill soon">Pas de test</span>'}</td><td class="small">${esc(last[x.p]?last[x.p].d:x.vu||'—')}</td></tr>`}).join('')}</table></div>`:'<p class="small">Aucun élève inscrit dans cette classe pour le moment.</p>'}
+    ${L.map((x,i)=>{const g=grp(x),p=pos[x.p];return `<tr><td>${i+1}</td><td><b>${esc(x.nom)}</b></td><td>${esc(x.prenom)}</td><td>@${esc(x.p)}</td>${hk?`<td>${esc(x.ecole||'—')}</td>`:''}<td>${g?`<span class="pill ${g.c}">${g.k} · ${g.nom}</span> <span class="small">${fmtN(p.sc)}/${p.sur} · ${esc(p.src)}</span>`:'<span class="pill soon">Pas de test</span>'}</td><td class="small">${esc(last[x.p]?last[x.p].d:x.vu||'—')}</td></tr>`}).join('')}</table></div>`:'<p class="small">Aucun élève inscrit dans cette classe pour le moment.</p>'}
   </section>
   <div class="row noprint"><button class="btn" data-act="pl-print">🖨 Imprimer la liste</button><button class="btn ghost" data-act="pl-copy">Copier (pour Excel / Sheets)</button></div>
   <section class="card noprint" style="display:flex;flex-direction:column;gap:12px;border-top:6px solid var(--red)">
     <p class="eyebrow" style="color:var(--red)">Remédiation · ${esc(clsLab(cl))} · 2 h par semaine</p>
-    <p class="small">Les élèves du groupe 1 (test de positionnement &lt; 13/25) voient une alerte sur l'accueil de leur application avec ce créneau.</p>
+    <p class="small">Les élèves du groupe 1 (dernière évaluation : positionnement &lt; 13/25 ou évaluation du mois &lt; 10/20) voient une alerte sur l'accueil de leur application avec ce créneau.</p>
     ${remL.length?`<p><b>${remL.length} élève${remL.length>1?'s':''} concerné${remL.length>1?'s':''} :</b> ${remL.map(x=>esc(x.prenom+' '+x.nom)).join(', ')}</p>`:'<p class="small">Aucun élève de cette classe en remédiation pour le moment.</p>'}
     <div class="form"><label>Jour et heure<input data-f="rm.creneau" maxlength="80" value="${esc(fval('rm.creneau'))}" placeholder="Ex. : Mercredi 15 h - 17 h"></label>
       <label>Lieu<input data-f="rm.lieu" maxlength="60" value="${esc(fval('rm.lieu'))}" placeholder="Ex. : Salle 12"></label>
@@ -4746,7 +4729,7 @@ function v2Act(a,b){
   if(a==='pl-cl'){PR.lcl=b.dataset.c;render();return}
   if(a==='pl-print'){window.print();return}
   if(a==='pl-copy'){const cl=PR.lcl,pos=posiParEleve(),L=(PR.ins||[]).filter(x=>x.c===cl).sort((x,y)=>(x.nom+' '+x.prenom).localeCompare(y.nom+' '+y.prenom,'fr'));
-    const t=['N°\tNom\tPrénom\tPseudo\tClasse\tÉcole d\'origine\tGroupe\tTest /25'].concat(L.map((x,i)=>{const p=pos[x.p],g=p?posiGroupe(p.sc):null;return [i+1,x.nom,x.prenom,'@'+x.p,clsLab(x.c),x.ecole||'',g?g.k+' · '+g.nom:'',p?p.sc:''].join('\t')})).join('\n');
+    const t=['N°\tNom\tPrénom\tPseudo\tClasse\tÉcole d\'origine\tGroupe\tDernière évaluation'].concat(L.map((x,i)=>{const p=pos[x.p],g=p?GROUPES[p.k-1]:null;return [i+1,x.nom,x.prenom,'@'+x.p,clsLab(x.c),x.ecole||'',g?g.k+' · '+g.nom:'',p?fmtN(p.sc)+'/'+p.sur+' ('+p.src+')':''].join('\t')})).join('\n');
     copyText(t,'Liste copiée : colle-la dans Excel ou Google Sheets');return}
   if(a==='pl-remed'){const R=FM.rm||{};PR.busy5=true;PR.e5='';render();
     profOp({op:'remed',classe:R.cl,creneau:R.creneau,lieu:R.lieu,remarque:R.remarque}).then(r=>{PR.busy5=false;if(r.ok){toast('Créneau de remédiation enregistré');loadProf(PR.code,false)}else{PR.e5=r.erreur;render()}});return}
@@ -4866,6 +4849,46 @@ function navBack(){if(!NAV.length){S.view='home';render();return}
   NAV_lock=true;render();window.scrollTo(0,0)}
 window.addEventListener('popstate',()=>{if(NAV.length)navBack()});
 {const _render=render;render=function(){_render();navTrack()}}
+
+/* ---------------- v2.2 : évaluations du mois au format officiel + groupes recalculés ---------------- */
+function grpDeNote(n20){return n20<10?1:n20<16?2:3}
+/* groupe de besoin d'après la dernière évaluation (serveur, sinon ce téléphone) */
+function remedInfo(){const P=DB.profil;if(!P||!P.niveau)return null;
+  const M=MONTHLY[P.niveau]||[];let loc=null;
+  for(let i=M.length-1;i>=0;i--){const r=rec(P.niveau+'-M'+M[i][0]),l=r.evals[r.evals.length-1];if(l){loc={g:grpDeNote(l.note),score:l.note,sur:20,src:'évaluation de '+M[i][1],i};break}}
+  if(!loc&&typeof POSI!=='undefined'&&POSI[P.niveau]&&posiRec(P.niveau)){const p=posiRec(P.niveau);loc={g:posiGroupe(p.score).k,score:p.score,sur:25,src:'test de positionnement',i:-1}}
+  const sp=DV.remed&&DV.remed.pos;let srv=null;
+  if(sp){const i=M.findIndex(m=>String(sp.source||'').includes(m[1]));srv={g:sp.groupe,score:sp.score,sur:sp.sur||25,src:/positionnement/.test(sp.source||'test de positionnement')?'test de positionnement':String(sp.source||'').replace(/^Évaluation formative de/,'évaluation de'),i}}
+  const best=srv&&(!loc||srv.i>=loc.i)?srv:loc;
+  if(!best||best.g!==1)return null;
+  return Object.assign({},best,{cr:DV.remed&&DV.remed.creneau})}
+function remedAlertHTML(){const R=remedInfo();if(!R)return '';const P=DB.profil,cr=R.cr;
+  return `<section class="card" role="alert" style="display:flex;flex-direction:column;gap:10px;border:2px solid var(--red);border-top:8px solid var(--red)">
+    <p class="eyebrow" style="color:var(--red)">⚠️ Remédiation · 2 h chaque semaine</p>
+    <h2 style="font-size:20px;margin:0">${esc(P.prenom)}, tu es dans le groupe de remédiation</h2>
+    <p>D'après ta dernière évaluation (${esc(R.src)} : <b>${fmtN(R.score)}/${R.sur}</b>), tu dois reprendre des bases. Suis <b>2 heures de remédiation chaque semaine</b> avec ton professeur de maths et travaille ton plan de rattrapage.</p>
+    ${cr&&cr.creneau?`<div class="enonce" style="white-space:normal"><p>📅 <b>${esc(cr.creneau)}</b>${cr.lieu?' · 📍 '+esc(cr.lieu):''}</p>${cr.remarque?`<p class="small" style="margin-top:4px">${esc(cr.remarque)}</p>`:''}</div>`:`<p class="small">Ton professeur va t'indiquer le jour, l'heure et la salle.</p>`}
+    <p class="small">Ton groupe est recalculé après chaque évaluation du mois : 10/20 ou plus, tu passes en consolidation ; 16/20 ou plus, en approfondissement.</p>
+    <div class="row">${typeof POSI!=='undefined'&&POSI[P.niveau]?`<button class="btn gold" data-act="posi" data-n="${P.niveau}">Mon plan de rattrapage</button>`:''}<button class="btn ghost" data-act="level" data-n="${P.niveau}">Mes chapitres</button></div></section>`}
+/* en-tête officiel et partie II de l'évaluation du mois */
+function mensK(cid){return String(cid).split('-M')[1]}
+function mensHeadHTML(c){const k=mensK(c.id),an=+k>=9?2026:2027;
+  return `<section class="card" style="display:flex;flex-direction:column;gap:8px;border-top:6px solid var(--navy)">
+    <div class="row" style="justify-content:space-between;align-items:flex-start;font-size:12.5px;line-height:1.4">
+      <div style="text-align:center">RÉPUBLIQUE DU SÉNÉGAL<br>Un Peuple – Un But – Une Foi<br><b>IA de Dakar – IEF de Dakar-Plateau</b></div>
+      <div style="text-align:right">Année scolaire 2026-2027<br>CEM John Fitzgerald Kennedy<br>Cellule de Mathématiques · Classe : ${esc(c.niv)}</div></div>
+    <p style="text-align:center;font-family:var(--display);font-weight:900;color:var(--ink);font-size:16px;margin-top:4px">ÉVALUATION FORMATIVE DE MATHÉMATIQUES · ${esc(String(c.mois).toUpperCase())} ${an}</p>
+    <div class="tablewrap"><table class="bilan"><tr><th>Partie</th><th>Forme</th><th>Correction</th></tr>
+      <tr><td><b>I · QCM</b></td><td>10 questions, ci-dessous, sur 20</td><td>Automatique, tout de suite</td></tr>
+      <tr><td><b>II · Exercices rédigés</b></td><td>Sujet officiel, sur ta copie, à rendre en photo, sur 20</td><td>Par ton professeur</td></tr></table></div>
+    <p class="small">Calculatrice interdite. Rédige en justifiant : On sait que… Or… Donc… D'où… Après la Partie I, ton groupe de besoin est mis à jour.</p></section>`}
+function mensP2HTML(c){const k=mensK(c.id),id='M'+c.niv[0]+'-'+k,d=(DV.list||[]).find(x=>x.id===id),cp=DV.copies[id];
+  return `<section class="card" style="display:flex;flex-direction:column;gap:10px;border-left:6px solid var(--gold)">
+    <p class="eyebrow">Partie II · Exercices rédigés</p>
+    ${d?`<p>Le sujet officiel du mois : traite-le sur ta copie puis envoie la photo. ${cp?`<span class="pill ${cp.statut==='Corrigée'?'ok':'mid'}">${cp.statut==='Corrigée'?'Corrigée : '+esc(fmtN(cp.note))+'/'+esc(fmtN(cp.sur)):'Copie envoyée'}</span>`:''}</p>
+      <img class="copie-img" src="${esc(d.imgUrl||'sujets/'+c.niv+'-M'+k+'.jpg')}" alt="Sujet de la partie II" data-act="zoom">
+      <div class="row"><button class="btn gold" data-act="devoirs">${cp?'Voir ma copie':'Rendre ma partie II en photo'}</button></div>`
+     :`<p class="small">Le sujet de la Partie II est publié automatiquement au début du mois de ${esc(c.mois)}, pour toutes les classes de ${esc(c.niv)}. Tu le retrouveras ici et dans « Mes devoirs ».</p>`}</section>`}
 
 /* ---------- activités de découverte (contexte sénégalais) : en tête de chaque cours ---------- */
 const DECOUV={
