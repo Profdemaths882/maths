@@ -3689,7 +3689,7 @@ function loadProf(code,remember){
     if(!d||!d.ok){PR.err=(d&&d.erreur)||"Accès refusé.";try{localStorage.removeItem('pdm_prof_code')}catch(e){}}
     else{const H=d.entetes||COLS;PR.rows=d.lignes.map(l=>{const o={};H.forEach((h,i)=>o[h]=l[i]);o.n20=parseFloat(String(o['Note /20']).replace(',','.'))||0;
       const [dd,mm,yy]=String(o.Date).split('/');o.ts=new Date(+yy,+mm-1,+dd).getTime()||0;return o});
-      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:String(x[4]).toUpperCase().replace(/\s+/g,''),le:x[5],vu:x[6],etab:x[7]||'',ecole:x[8]||''}));PR.feuille=d.feuille||'';PR.me=d.moi||{admin:true,nom:'',classes:[]};PR.devoirs=d.devoirs||[];PR.copies=d.copies||[];PR.profs=d.profs||null;PR.dossier=d.dossier||'';PR.remed=d.remed||[];PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
+      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:String(x[4]).toUpperCase().replace(/\s+/g,''),le:x[5],vu:x[6],etab:x[7]||'',ecole:x[8]||''}));PR.feuille=d.feuille||'';PR.me=d.moi||{admin:true,nom:'',classes:[]};PR.devoirs=d.devoirs||[];PR.copies=d.copies||[];PR.profs=d.profs||null;PR.dossier=d.dossier||'';PR.remed=d.remed||[];PR.prog=d.prog||[];PR.ctrl=d.controles||[];PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
     done()};
   s.onerror=()=>{clearTimeout(timer);PR.err="Impossible de joindre le serveur de suivi.";done()};
   s.src=TRACK_URL+'?code='+encodeURIComponent(code)+'&callback='+cb;document.body.appendChild(s);
@@ -3797,7 +3797,7 @@ function profEleveHTML(l){
 /* ---------- remédiation : compétences réussies / ratées par élève ---------- */
 function recordSkill(cid,label,ok){
   if(!label)return;
-  if(REG[cid]&&REG[cid].monthly){const niv=cid.split('-')[0];const hit=REG[cid].codes.map(c=>niv+'-'+c).find(c=>skillKey(c,label));if(!hit)return;cid=hit}
+  if(REG[cid]&&(REG[cid].monthly||REG[cid].blanc)){const niv=cid.split('-')[0];const hit=REG[cid].codes.map(c=>niv+'-'+c).find(c=>skillKey(c,label));if(!hit)return;cid=hit}
   DB.sk=DB.sk||{};const t=(DB.sk[cid]=DB.sk[cid]||{});let v=t[label];if(!Array.isArray(v)||v.length===2&&v[1]>1)v=[];
   v.push(ok?1:0);if(v.length>5)v=v.slice(-5);t[label]=v;
 }
@@ -4116,10 +4116,10 @@ const LV={
   ['INS',"Inéquations à deux inconnues",'num','avril'],['REP',"Repérage dans le plan",'geo','mai'],['AFF',"Applications affines",'num','mai'],
   ['TRA',"Transformations du plan",'geo','juin']]},
 };
-function chapInfo(cid){const [niv,code]=cid.split('-');if(REG[cid]&&REG[cid].monthly){const R=REG[cid];return{id:cid,niv,code,n:0,titre:'Évaluation formative de '+R.mois,geo:false,mois:R.mois,tag:`${niv} · Évaluation formative du mois`}}
+function chapInfo(cid){const [niv,code]=cid.split('-');if(REG[cid]&&REG[cid].blanc)return{id:cid,niv,code,n:0,titre:REG[cid].titre,geo:false,mois:'',tag:niv+' · Devoir blanc · révision'};if(REG[cid]&&REG[cid].monthly){const R=REG[cid];return{id:cid,niv,code,n:0,titre:'Évaluation formative de '+R.mois,geo:false,mois:R.mois,tag:`${niv} · Évaluation formative du mois`}}
   const L=LV[niv],k=L.chaps.findIndex(c=>c[0]===code),c=L.chaps[k];
   return{id:cid,niv,code,n:k+1,titre:c[1],geo:c[2]==='geo',mois:c[3],tag:`${niv} · Chapitre ${k+1} · Activité ${c[2]==='geo'?'géométrique':'numérique'}`}}
-const ready=cid=>!!REG[cid]&&!REG[cid].monthly;
+const ready=cid=>!!REG[cid]&&!REG[cid].monthly&&!REG[cid].blanc;
 /* ---------- évaluations formatives mensuelles ---------- */
 const MONTHLY={
  '6e':[['11','novembre',['DEC','ADD','SOU','GEO','RAN']],['12','décembre',['RAN','CER','MUL']],['01','janvier',['MUL','PER','DIV']],['02','février',['DIV','SYM','ORG']],['03','mars',['ORG','ANG','PRO','POL']],['04','avril',['POL','REL','AIR']],['05','mai',['AIR','ESP','REP']],['06','juin',null]],
@@ -4226,7 +4226,7 @@ function render(){
   document.getElementById('homebtn').hidden=S.view==='home';
   document.getElementById('sub').textContent=DB.profil?`${eleve()} · ${clsLab(DB.profil.classe||DB.profil.niveau)}`:'Maths au collège · 6e · 5e · 4e · 3e';
   const app=document.getElementById('app');
-  app.innerHTML=S.view==='home'?homeHTML():S.view==='level'?levelHTML():S.view==='guide'?guideHTML():S.view==='prof'?profHTML():S.view==='rank'?rankHTML():S.view==='posi'?posiHTML():S.view==='defis'?defisHTML():S.view==='devoirs'?devoirsHTML():chapHTML();
+  app.innerHTML=S.view==='home'?homeHTML():S.view==='level'?levelHTML():S.view==='guide'?guideHTML():S.view==='prof'?profHTML():S.view==='rank'?rankHTML():S.view==='posi'?posiHTML():S.view==='defis'?defisHTML():S.view==='devoirs'?devoirsHTML():S.view==='revis'?revisHTML():chapHTML();
   const qh=document.getElementById('qrhome');if(qh)makeQR(qh,150);
   document.querySelectorAll('[data-qr]').forEach(e=>makeQR(e,170));
 }
@@ -4246,7 +4246,7 @@ function homeHTML(){
     <div><p class="eyebrow">Mon profil</p><p style="margin-top:4px"><b style="color:var(--ink)">${esc(eleve())}</b> · ${esc(clsLab(p.classe||p.niveau))}${p.etab==='HK'&&p.ecole?' · '+esc(p.ecole):''}</p></div>
     <div class="row" style="gap:8px;flex-wrap:wrap">${S.askOut?`<button class="btn" style="background:#b3261e;color:#fff" data-act="logout-ok">Oui, me déconnecter</button><button class="btn ghost" data-act="logout-no">Annuler</button>`:`<button class="btn ghost" data-act="edit-profil">Modifier</button><button class="btn ghost" data-act="logout">Se déconnecter</button>`}</div></section>
   ${S.askOut?`<section class="card"><p class="small">Ce téléphone oubliera ton profil et ta progression. Tes notes déjà envoyées à M. Thiam sont conservées : pour retrouver ton suivi, reconnecte-toi avec <b>ton pseudo et ton code secret</b>.</p></section>`:''}`}
-  ${remedAlertHTML()}${completeCardHTML()}${devoirsCardHTML()}${installHTML()}${rankCardHTML()}${p&&p.niveau?weakHTML(p.niveau,'Mes points faibles en '+p.niveau):''}
+  ${remedAlertHTML()}${devoirAlertHTML()}${completeCardHTML()}${devoirsCardHTML()}${installHTML()}${rankCardHTML()}${p&&p.niveau?weakHTML(p.niveau,'Mes points faibles en '+p.niveau):''}
   <section class="levels">${['6e','5e','4e','3e'].map(n=>{const s=lvlStats(n);return `<article class="card lvl ${mine===n?'mine':''}" style="--lc:${LV[n].color}">
     ${mine===n?'<span class="badge">Mon niveau</span>':''}
     <h2>${n}<small>${LV[n].nom}</small></h2>
@@ -4320,12 +4320,12 @@ function guideHTML(){
     ${i<G.length-1?`<button class="btn" data-act="gs" data-i="${i+1}">Suivant ›</button>`:`<button class="btn" data-act="level" data-n="${n}">Mes chapitres de ${n}</button>`}</div>`;
 }
 function chapHTML(){
-  if(REG[S.cid].monthly){const c=chapInfo(S.cid),R=REG[S.cid];S.tab='eval';
+  if(REG[S.cid].monthly||REG[S.cid].blanc){const c=chapInfo(S.cid),R=REG[S.cid];S.tab='eval';
     const names=R.codes.map(k=>LV[c.niv].chaps.find(x=>x[0]===k)[1]);
     return `<div class="chap-head"><p class="eyebrow">${c.tag}</p><h1>${c.titre}</h1>
     <p class="small">Chapitres évalués : ${names.join(' · ')}</p>
     <button class="btn ghost" style="align-self:flex-start;padding:6px 12px;font-size:13px" data-act="level" data-n="${c.niv}">← Tous les chapitres de ${c.niv}</button></div>
-    <div style="display:flex;flex-direction:column;gap:18px">${evalHTML(c,true)}</div>${mensP2HTML(c)}`}
+    <div style="display:flex;flex-direction:column;gap:18px">${evalHTML(c,true)}</div>${R.blanc?'':mensP2HTML(c)}`}
   const c=chapInfo(S.cid),R=REG[S.cid],r=rec(S.cid),unlocked=r.best!==null&&r.best>=SEUIL;
   const tabs=[['cours','Cours'],['train',"S'entraîner"],['quiz','Quiz'],['eval','Évaluation']];
   let body='';
@@ -4405,7 +4405,7 @@ function evalHTML(c,unlocked){
 function offHead(c){return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;line-height:1.35;border-bottom:2px solid var(--blue);padding-bottom:6px">
   <div class="center">RÉPUBLIQUE DU SÉNÉGAL<br>Un Peuple – Un But – Une Foi<br><b>IA de Dakar – IEF de Dakar-Plateau</b></div>
   <div style="text-align:right">Année scolaire 2026-2027<br>CEM John Fitzgerald Kennedy<br>Cellule de Mathématiques · Classe : <b>${c.niv}</b></div></div>
-  <p class="eyebrow center" style="margin-top:4px">${REG[c.id]&&REG[c.id].monthly?'Évaluation formative du mois':'Évaluation de chapitre'}</p>
+  <p class="eyebrow center" style="margin-top:4px">${REG[c.id]&&REG[c.id].blanc?'Devoir blanc · entraînement':REG[c.id]&&REG[c.id].monthly?'Évaluation formative du mois':'Évaluation de chapitre'}</p>
   <h2 class="center" style="margin:0">${c.titre}</h2>`}
 function sheetHTML(c,R,fromEval){
   const [men,cls]=mentionOf(R.note),s=st(c.id);
@@ -4516,7 +4516,7 @@ function completeCardHTML(){const p=DB.profil;if(!p||p.etab||!p.pseudo||p.ok===f
 
 /* ---------------- devoirs à rendre en photo (élève) ---------------- */
 const DV={list:null,copies:{},remed:null,loading:false,err:'',photos:{},busy:'',repl:{},fig:{},figBusy:'',ph:'',e:{},at:0};
-try{const c=JSON.parse(localStorage.getItem('pdm_devoirs')||'null');if(c&&c.list){DV.list=c.list;DV.copies=c.copies||{};DV.remed=c.remed||null}}catch(e){}
+try{const c=JSON.parse(localStorage.getItem('pdm_devoirs')||'null');if(c&&c.list){DV.list=c.list;DV.copies=c.copies||{};DV.remed=c.remed||null;DV.ctrl=c.ctrl||[]}}catch(e){}
 function loadDevoirs(force){const P=DB.profil;if(!trackOn()||!P||!P.pseudo||!P.classe||DV.loading)return;
   if(!force&&Date.now()-DV.at<60000)return;
   DV.loading=true;DV.err='';if(S.view==='devoirs')softRender();
@@ -4525,8 +4525,8 @@ function loadDevoirs(force){const P=DB.profil;if(!trackOn()||!P||!P.pseudo||!P.c
   const done=()=>{DV.loading=false;delete window[cb];s.remove();if(S.view==='devoirs'||S.view==='home')softRender()};
   const timer=setTimeout(()=>{DV.err="Pas de réponse du serveur : voici les derniers devoirs chargés.";done()},20000);
   window[cb]=d=>{clearTimeout(timer);DV.at=Date.now();
-    if(d&&d.ok){DV.list=d.devoirs||[];(DV.list||[]).forEach(x=>{if(x.imgUrl)DV.fig[x.id]=x.imgUrl});DV.copies={};(d.copies||[]).forEach(c=>DV.copies[c.devoir]=c);DV.remed=d.remed||null;
-      try{localStorage.setItem('pdm_devoirs',JSON.stringify({list:DV.list,copies:DV.copies,remed:DV.remed}))}catch(e){}}
+    if(d&&d.ok){DV.list=d.devoirs||[];(DV.list||[]).forEach(x=>{if(x.imgUrl)DV.fig[x.id]=x.imgUrl});DV.copies={};(d.copies||[]).forEach(c=>DV.copies[c.devoir]=c);DV.remed=d.remed||null;DV.ctrl=d.controles||[];
+      try{localStorage.setItem('pdm_devoirs',JSON.stringify({list:DV.list,copies:DV.copies,remed:DV.remed,ctrl:DV.ctrl}))}catch(e){}}
     else DV.err=(d&&d.erreur)||"Devoirs indisponibles pour le moment.";done()};
   s.onerror=()=>{clearTimeout(timer);DV.err=navigator.onLine===false?"Pas de connexion : voici les derniers devoirs chargés.":"Impossible de joindre le serveur.";done()};
   s.src=TRACK_URL+'?action=mesdevoirs&classe='+encodeURIComponent(P.classe)+'&pseudo='+encodeURIComponent(P.pseudo)+'&k='+encodeURIComponent(k)+'&callback='+cb;document.body.appendChild(s)}
@@ -4595,14 +4595,15 @@ function profClasses(){const me=PR.me||{admin:true,classes:[]};if(!me.admin)retu
   const seen=(PR.rows||[]).map(r=>r.Classe).concat((PR.ins||[]).map(x=>x.c)).filter(c=>/^[3-6](?:[A-H]|HK)$/.test(c));
   return [...new Set(STDCL.concat(seen))].sort(clsSort)}
 function profNavHTML(){const me=PR.me||{admin:true,nom:'',classes:[]},todo=(PR.copies||[]).filter(c=>c.statut!=='Corrigée').length;
-  const tabs=[['suivi','📊 Suivi'],['listes','👥 Listes et remédiation'],['copies','📷 Copies'+(todo?` <span class="notif">${todo}</span>`:'')],['devoirs','📝 Devoirs']].concat(me.admin?[['profs','🔑 Comptes profs']]:[['compte','⚙️ Mon compte']]);
+  const tabs=[['suivi','📊 Suivi'],['listes','👥 Listes et remédiation'],['copies','📷 Copies'+(todo?` <span class="notif">${todo}</span>`:'')],['devoirs','📝 Devoirs'],['prog','📅 Progression'+((PR.me&&!PR.me.admin&&mathsProf()&&profClasses().some(c=>/^[3-6]/.test(c)&&progEtat(c).niveau))?' <span class="notif">!</span>':'')]].concat(me.admin?[['profs','🔑 Comptes profs']]:[['compte','⚙️ Mon compte']]);
   return `<section class="card row" style="justify-content:space-between;gap:8px"><div><p class="eyebrow">Espace professeur</p><p style="margin-top:2px"><b style="color:var(--ink)">${esc(me.nom||'Professeur')}</b> · ${me.admin?'administrateur · toutes les classes':esc((me.matieres||[]).map(matCourt).join(' + ')+' · '+((me.classes||[]).map(clsLab).join(', ')||'aucune classe'))}</p></div>
     <button class="btn ghost sm" data-act="prof-logout">Se déconnecter</button></section>
-  <div class="skills noprint">${tabs.map(([k,l])=>`<button class="skill ${(PR.tab||'suivi')===k?'on':''}" data-act="pt-tab" data-t="${k}">${l}</button>`).join('')}</div>`}
+  <div class="skills noprint">${tabs.map(([k,l])=>`<button class="skill ${(PR.tab||'suivi')===k?'on':''}" data-act="pt-tab" data-t="${k}">${l}</button>`).join('')}</div>${(PR.tab||'suivi')==='suivi'?profAlertesHTML():''}`}
 function profTabHTML(){const t=PR.tab;
   if(t==='listes')return profListesHTML();
   if(t==='copies')return profCopiesHTML();
   if(t==='devoirs')return profDevoirsHTML();
+  if(t==='prog')return profProgHTML();
   if(t==='profs'&&PR.me&&PR.me.admin)return profProfsHTML();
   if(t==='compte'&&PR.me&&!PR.me.admin)return profCompteHTML();
   PR.tab='suivi';return ''}
@@ -4726,7 +4727,7 @@ function v2Act(a,b){
   if(a.startsWith('dv-')){dvAct(a,b);return}
   /* espace professeur */
   if(a==='pt-tab'){PR.tab=b.dataset.t;PR.copie=null;PR.e2=PR.e3=PR.e4=PR.e5='';render();window.scrollTo(0,0);return}
-  if(a==='pl-cl'){PR.lcl=b.dataset.c;render();return}
+  if(a==='pl-cl'){PR.lcl=b.dataset.c;if(PR.tab!=='listes'){PR.tab='listes';window.scrollTo(0,0)}render();return}
   if(a==='pl-print'){window.print();return}
   if(a==='pl-copy'){const cl=PR.lcl,pos=posiParEleve(),L=(PR.ins||[]).filter(x=>x.c===cl).sort((x,y)=>(x.nom+' '+x.prenom).localeCompare(y.nom+' '+y.prenom,'fr'));
     const t=['N°\tNom\tPrénom\tPseudo\tClasse\tÉcole d\'origine\tGroupe\tDernière évaluation'].concat(L.map((x,i)=>{const p=pos[x.p],g=p?GROUPES[p.k-1]:null;return [i+1,x.nom,x.prenom,'@'+x.p,clsLab(x.c),x.ecole||'',g?g.k+' · '+g.nom:'',p?fmtN(p.sc)+'/'+p.sur+' ('+p.src+')':''].join('\t')})).join('\n');
@@ -4838,14 +4839,14 @@ function v21Act(a,b){
 
 /* ---------------- bouton « Retour » (et bouton retour du téléphone) ---------------- */
 const NAV=[];let NAV_last=null,NAV_lock=false;
-function navSnap(){return JSON.stringify({v:S.view,n:S.niv,c:S.cid,t:S.tab,r:S.role||null,gi:S.gi==null?null:S.gi,ep:!!S.editProfil,pt:PR.tab||'suivi',pc:PR.copie||null,pe:PR.eleve||null,pa:PR.auth||null})}
+function navSnap(){return JSON.stringify({v:S.view,n:S.niv,c:S.cid,t:S.tab,r:S.role||null,gi:S.gi==null?null:S.gi,ep:!!S.editProfil,pt:PR.tab||'suivi',pc:PR.copie||null,pe:PR.eleve||null,pa:PR.auth||null,rv:S.rv||null,pcl:PR.pcl||null})}
 function navTrack(){const cur=navSnap();
   if(NAV_lock){NAV_lock=false;NAV_last=cur}
   else if(NAV_last!==null&&cur!==NAV_last){NAV.push(NAV_last);if(NAV.length>60)NAV.shift();try{history.pushState({pdm:NAV.length},'')}catch(e){}NAV_last=cur}
   else NAV_last=cur;
   const bb=document.getElementById('backbtn');if(bb)bb.hidden=!NAV.length}
 function navBack(){if(!NAV.length){S.view='home';render();return}
-  const s=JSON.parse(NAV.pop());S.view=s.v;S.niv=s.n;S.cid=s.c;S.tab=s.t;S.role=s.r||undefined;S.gi=s.gi;S.editProfil=s.ep;PR.tab=s.pt;PR.copie=s.pc;PR.eleve=s.pe;PR.auth=s.pa||undefined;
+  const s=JSON.parse(NAV.pop());S.view=s.v;S.niv=s.n;S.cid=s.c;S.tab=s.t;S.role=s.r||undefined;S.gi=s.gi;S.editProfil=s.ep;PR.tab=s.pt;PR.copie=s.pc;PR.eleve=s.pe;PR.auth=s.pa||undefined;S.rv=s.rv;PR.pcl=s.pcl;
   NAV_lock=true;render();window.scrollTo(0,0)}
 window.addEventListener('popstate',()=>{if(NAV.length)navBack()});
 {const _render=render;render=function(){_render();navTrack()}}
@@ -4956,6 +4957,227 @@ function decouvHTML(cid){const d=DECOUV[cid];if(!d)return '';
     <ol>${d[2].map(q=>`<li>${q}</li>`).join('')}</ol>
     <details><summary>Piste de réponse (cherche d'abord !)</summary><p style="margin-top:6px">${d[3]}</p></details></section>`}
 
+/* ====================================================================== */
+/*  VERSION 2.3 · progression harmonisée suivie par les profs,             */
+/*  calendrier des devoirs et alertes de compte à rebours                  */
+/* ====================================================================== */
+/* semaines de la progression harmonisée (IA Dakar / Pikine-Guédiawaye / Rufisque) :
+   O=octobre N D J F M A Y=mai U=juin, suivi du numéro de semaine du mois */
+const PH_M='ONDJFMAYU',PH_LAB=['oct.','nov.','déc.','janv.','févr.','mars','avril','mai','juin'];
+const PROGH={
+ '6e':{DEC:'O1-O2',ADD:'O3',SOU:'O4',GEO:'N1-N2',RAN:'N3',CER:'D1',MUL:'D2',PER:'J1-J2',DIV:'J3',SYM:'J4-F1',ORG:'F2',ANG:'F4-M1',PRO:'M2',POL:'M3-M4',REL:'A3',AIR:'A4',ESP:'Y1-Y2',REP:'Y3-Y4',SPH:'U1-U2'},
+ '5e':{PUI:'O2',SYM:'O3-O4',MUL:'N1-N3',ANG:'N4-D1',FRA:'D2-D3',PAR:'J2-J3',DRE:'J4-F4',TRI:'M1-M3',PRO:'M4',QUA:'A3-A4',REP:'Y1-Y2',ESP:'Y3-Y4'},
+ '4e':{RAT:'O2-O4',DIS:'N1-N3',CAL:'N4-D1',DMI:'D2-D3',EQU:'J1-J2',DRT:'J3-J4',INE:'F1-F2',TRR:'F4-M1',TRV:'M2-M4',APL:'A3-A4',PRJ:'Y1',STA:'Y2',ROT:'Y3-Y4',ESP:'U1-U2'},
+ '3e':{RAC:'O2-O4',THA:'N1-N2',EQI:'N3-N4',TRG:'D1-D2',AIC:'J2-J3',SYS:'J4-F2',ESP:'F3-F4',STA:'M1-M2',VEC:'M3-M4',INS:'A3',REP:'Y1-Y2',AFF:'Y3-Y4',TRA:'U2-U3'}};
+const EV_ETAB='Évaluation standardisée (niveau établissement)',EV_IEF='Évaluation standardisée (niveau IEF)';
+const EVALH={
+ '6e':[['N4',EV_ETAB],['D3',EV_IEF],['F3','Composition du premier semestre',1],['M4',EV_ETAB],['Y1',EV_IEF],['U3','Composition du second semestre',2]],
+ '5e':[['N4',EV_ETAB],['D3',EV_IEF],['F3','Composition du premier semestre',1],['M4',EV_ETAB],['Y1',EV_IEF],['U3','Composition du second semestre',2]],
+ '4e':[['N4',EV_ETAB],['D3',EV_IEF],['F3','Composition du premier semestre',1],['M4',EV_ETAB],['Y1',EV_IEF],['U3','Composition du second semestre',2]],
+ '3e':[['N4',EV_ETAB],['D3',EV_IEF],['F1','Composition du premier semestre',1],['M4',EV_ETAB],['A4',EV_IEF],['U1','Composition du second semestre',2]]};
+const PH_VAC=[11,12,24,25]; /* semaines de vacances : déc. S4, janv. S1, avril S1-S2 */
+const DAY=864e5;
+const phIdx=c=>PH_M.indexOf(c[0])*4+(+c[1]-1);
+const phLab=i=>PH_LAB[Math.floor(i/4)]+' S'+(i%4+1);
+const today0=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+const schoolY=d=>{d=d||new Date();return d.getMonth()>=7?d.getFullYear():d.getFullYear()-1};
+/* lundi de la semaine k du mois : la 1re semaine est celle qui contient le 1er du mois s'il tombe du lundi au mercredi */
+function wkMon(i,Y){Y=Y==null?schoolY():Y;const m=Math.floor(i/4),k=i%4,cm=(9+m)%12,cy=Y+(9+m>=12?1:0),dow=new Date(cy,cm,1).getDay(),off=dow>=1&&dow<=3?1-dow:(8-dow)%7;return new Date(cy,cm,1+off+7*k)}
+const wkFri=i=>new Date(wkMon(i).getTime()+4*DAY);
+const frDate=(d,o)=>d.toLocaleDateString('fr-FR',o||{weekday:'long',day:'numeric',month:'long'});
+const parseFr=s=>{const m=String(s||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null};
+const parseIso=s=>{const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?new Date(+m[1],+m[2]-1,+m[3]):null};
+const joursAvant=d=>Math.round((d.getTime()-today0().getTime())/DAY);
+/* semaines de cours (sans les vacances) écoulées entre deux dates */
+function semCours(a,b){let n=0;for(let i=0;i<36;i++){const m=wkMon(i);if(m>a&&m<=b&&!PH_VAC.includes(i))n++}return n}
+function planDe(niv){const P=PROGH[niv]||{};return ((LV[niv]&&LV[niv].chaps)||[]).map((c,k)=>{const p=String(P[c[0]]||'').split('-');if(!p[0])return null;const s=phIdx(p[0]),e=phIdx(p[1]||p[0]);
+  return{code:c[0],titre:c[1],n:k+1,s,e,deb:wkMon(s),fin:wkFri(e)}}).filter(Boolean)}
+
+/* ---------- état d'une classe par rapport à la progression ---------- */
+function marquesDe(cl){const o={};(PR.prog||[]).filter(x=>x.classe===cl).forEach(x=>o[x.chap]=x);return o}
+function progEtat(cl){const niv=cl[0]+'e',P=planDe(niv),M=marquesDe(cl),t=today0();
+  const fini=c=>M[c.code]&&M[c.code].etat==='Terminé',cours=c=>M[c.code]&&M[c.code].etat==='En cours';
+  const enRetard=P.filter(c=>c.fin<t&&!fini(c)),attendu=P.find(c=>c.deb<=t&&t<=c.fin)||P.filter(c=>c.fin<t).pop()||P[0];
+  const sem=enRetard.length?semCours(enRetard[0].fin,t):0;
+  const actuel=P.filter(cours).pop()||P.find(c=>!fini(c));
+  const avance=P.filter(c=>(fini(c)||cours(c))&&c.deb>t).length;
+  const pasCommence=P.find(c=>!fini(c)&&!cours(c)&&c.deb<=t&&semCours(c.deb,t)>=1&&!enRetard.includes(c));
+  const niveau=sem>=2?2:sem>=1||enRetard.length?1:0;
+  return{niv,P,M,enRetard,sem,attendu,actuel,avance,pasCommence,niveau,nbFini:P.filter(fini).length}}
+const NIVC=[['var(--green)','À jour'],['#C77700','Léger retard'],['var(--red)','En retard']];
+function retardTexte(E,cl){
+  if(E.niveau===0)return E.avance?`${clsLab(cl)} est en avance sur la progression harmonisée (${E.avance} chapitre${E.avance>1?'s':''}).`:`${clsLab(cl)} est à jour : selon la progression harmonisée, vous devez être à « ${E.attendu?E.attendu.titre:'—'} ».`;
+  const c=E.enRetard[0];
+  return `${clsLab(cl)} : « ${c.titre} » devait être terminé le ${frDate(c.fin,{day:'numeric',month:'long'})}${E.sem?` (${E.sem} semaine${E.sem>1?'s':''} de cours de retard)`:''}. ${E.enRetard.length>1?`${E.enRetard.length} chapitres auraient dû être terminés. `:''}La progression harmonisée en est à « ${E.attendu?E.attendu.titre:'—'} ».`}
+function mathsProf(){const me=PR.me||{};return me.admin||(me.matieres||[]).includes('Mathématiques')}
+
+/* ---------- calendrier des devoirs : progression harmonisée + devoirs programmés par le prof ---------- */
+function chapsAvant(niv,i,depuis){return planDe(niv).filter(c=>c.s<=i&&c.s>depuis).map(c=>c.code)}
+function evenements(cl,ctrls){const niv=cl[0]+'e',E=EVALH[niv]||[],out=[];
+  (ctrls||[]).filter(c=>(c.classes||[]).includes(cl)).forEach(c=>{const d=parseIso(c.date)||parseFr(c.date);if(d)out.push({id:'C:'+c.id,titre:c.titre,date:d,jour:true,chaps:c.chapitres||[],matiere:c.matiere||'Mathématiques',rq:c.remarque||'',par:c.par||'',niv,cl})});
+  let prev=-1,sem1=-1;
+  E.forEach(([w,lab,compo])=>{const i=phIdx(w),d=wkMon(i),depuis=compo===1?-1:compo===2?sem1:prev;
+    if(compo===1)sem1=i;
+    const proche=out.some(o=>o.matiere==='Mathématiques'&&Math.abs(o.date-d)<=8*DAY);
+    if(!proche)out.push({id:'H:'+niv+':'+w,titre:lab,date:d,jour:false,chaps:chapsAvant(niv,i,depuis),matiere:'Mathématiques',rq:'',par:'Progression harmonisée',niv,cl,harm:true});
+    prev=i});
+  return out.sort((a,b)=>a.date-b.date)}
+function prochains(cl,ctrls,max){return evenements(cl,ctrls).filter(e=>{const j=joursAvant(e.date);return j>=0&&j<=(max==null?14:max)||(!e.jour&&j<0&&j>-5)})}
+/* plus le devoir approche, plus le rouge est foncé */
+function rougeDe(j){const t=1-Math.max(0,Math.min(14,j))/14,l=Math.round(94-t*66),s=Math.round(70+t*12);
+  return{bg:`hsl(4 ${s}% ${l}%)`,bd:`hsl(4 ${s}% ${Math.max(18,l-22)}%)`,fg:l<52?'#fff':'#3D0805',sub:l<52?'rgba(255,255,255,.88)':'#4E0F0A'}}
+function quandTxt(e){const j=joursAvant(e.date);
+  if(!e.jour){const d=frDate(e.date,{day:'numeric',month:'long'});return j<=0?`Cette semaine (semaine du ${d})`:j<=7?`La semaine prochaine (semaine du ${d})`:`Dans ${Math.round(j/7)} semaines (semaine du ${d})`}
+  const d=frDate(e.date);return j===0?`Aujourd'hui, ${d}`:j===1?`Demain, ${d}`:j===7?`Dans 1 semaine, ${d}`:j===14?`Dans 2 semaines, ${d}`:`Dans ${j} jours, ${d}`}
+function compteHTML(e){const j=Math.max(0,joursAvant(e.date));return `<span style="font-family:var(--display);font-weight:900;font-size:26px;line-height:1;white-space:nowrap;flex:none">${j===0?'J':'J-'+j}</span>`}
+function nomsChaps(niv,codes){return (codes||[]).map(k=>{const c=LV[niv]&&LV[niv].chaps.find(x=>x[0]===k);return c?c[1]:k})}
+function alerteDevoirHTML(e,eleve){const R=rougeDe(joursAvant(e.date)),ch=nomsChaps(e.niv,e.chaps);
+  return `<section class="card" role="${joursAvant(e.date)<=3?'alert':'status'}" style="display:flex;flex-direction:column;gap:8px;background:${R.bg};border:2px solid ${R.bd};color:${R.fg}">
+    <div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:nowrap">
+      <div style="min-width:0"><p class="eyebrow" style="color:${R.sub}">📆 ${eleve?'Devoir à préparer':esc(e.clLab||clsLab(e.cl))+' · devoir à venir'} · ${esc(matCourt(e.matiere))}</p>
+      <h2 style="font-size:19px;margin:4px 0 0;color:${R.fg}">${esc(e.titre)}</h2>
+      <p style="margin-top:2px;color:${R.fg}"><b>${esc(quandTxt(e))}</b></p></div>${compteHTML(e)}</div>
+    ${ch.length?`<p class="small" style="color:${R.sub}">${e.harm?'Chapitres prévus':'Chapitres'} : ${esc(ch.join(' · '))}</p>`:''}
+    ${e.rq?`<p class="small" style="color:${R.sub}">${esc(e.rq)}</p>`:''}
+    ${e.harm?`<p class="small" style="color:${R.sub}">Date prévue par la progression harmonisée : ${eleve?'ton professeur te donnera le jour exact.':'programmez le jour exact dans « Progression » pour que vos élèves le voient.'}</p>`:''}
+    ${eleve?`<div class="row"><button class="btn gold" data-act="rv-open" data-e="${esc(e.id)}">Réviser pour ce devoir</button></div>`:profRappelHTML(e,R)}</section>`}
+/* rappel au professeur avant le devoir : révision et évaluation */
+function profRappelHTML(e,R){const j=joursAvant(e.date);
+  const conseils=j>=8?['Prévoyez une <b>séance de révision</b> sur les chapitres du devoir.','Faites une <b>évaluation formative</b> (interrogation ou exercice à rendre en photo) pour repérer les élèves en difficulté.']
+    :j>=3?['C\'est le moment de la <b>séance de révision</b> : exercices types et méthode de rédaction.','Une <b>évaluation courte</b> cette semaine vous dira qui doit encore travailler.']
+    :['<b>Dernière révision</b> : rappelez la méthode (On sait que… Or… Donc…) et le matériel à apporter.','Vos élèves ont un <b>devoir blanc</b> dans l\'application : encouragez-les à le faire.'];
+  return `<div style="background:rgba(255,255,255,.9);color:#3a1410;border-radius:12px;padding:10px 12px"><p class="small" style="color:#3a1410"><b>À faire avant le devoir</b></p><ul style="margin:4px 0 0;padding-left:18px;font-size:14px">${conseils.map(c=>`<li>${c}</li>`).join('')}</ul></div>
+    <div class="row"><button class="btn sm" style="background:#fff;color:#6E1410" data-act="pt-tab" data-t="devoirs">📝 Publier une révision en photo</button><button class="btn sm" style="background:#fff;color:#6E1410" data-act="pg-cl" data-c="${esc(e.l?e.l[0]:e.cl)}">📅 Calendrier</button></div>`}
+/* après le devoir : proposer la remédiation */
+function remedApresHTML(e){const j=-joursAvant(e.date);
+  return `<section class="card" style="display:flex;flex-direction:column;gap:8px;border:2px solid var(--blue);border-top:8px solid var(--blue)">
+    <p class="eyebrow" style="color:var(--blue)">🩹 Après le devoir · ${esc(e.clLab||clsLab(e.cl))}</p>
+    <h2 style="font-size:18px;margin:0">${esc(e.titre)} : place à la remédiation</h2>
+    <p class="small">Devoir ${e.jour?'fait le '+esc(frDate(e.date,{day:'numeric',month:'long'})):'de la semaine du '+esc(frDate(e.date,{day:'numeric',month:'long'}))}${j?' (il y a '+j+' jour'+(j>1?'s':'')+')':''}.</p>
+    <ul style="margin:0;padding-left:18px;font-size:14px"><li>Corrigez le devoir en classe et repérez les <b>erreurs les plus fréquentes</b>.</li><li>Organisez une <b>séance de remédiation</b> pour les élèves sous la moyenne (groupe de remédiation : 2 h par semaine).</li><li>Proposez un <b>exercice de rattrapage</b> à rendre en photo, puis vérifiez les progrès à l'évaluation du mois.</li></ul>
+    <div class="row"><button class="btn gold sm" data-act="pl-cl" data-c="${esc(e.l?e.l[0]:e.cl)}">👥 Groupe de remédiation</button><button class="btn ghost sm" data-act="pt-tab" data-t="devoirs">📝 Exercice de rattrapage</button></div></section>`}
+
+/* ---------- côté élève ---------- */
+function mesEvenements(){const P=DB.profil;if(!P||!P.classe||!/^[3-6]/.test(P.classe))return [];return evenements(P.classe,DV.ctrl||[])}
+function devoirAlertHTML(){const P=DB.profil;if(!P||!P.classe)return '';
+  const L=prochains(P.classe,DV.ctrl||[]);return L.map(e=>alerteDevoirHTML(e,true)).join('')}
+function revisHTML(){const P=DB.profil,e=mesEvenements().find(x=>x.id===S.rv);
+  if(!P||!e)return `<section class="card"><p>Ce devoir n'est plus dans ton calendrier.</p></section><button class="btn ghost" data-act="home">Retour à l'accueil</button>`;
+  const niv=e.niv,j=joursAvant(e.date),codes=e.chaps.length?e.chaps:planDe(niv).filter(c=>c.deb<=e.date).slice(-3).map(c=>c.code);
+  const now=new Date(),kNow=now.getMonth()+1;
+  const passes=(MONTHLY[niv]||[]).filter(([k,lab,cs])=>{const km=+k,ok=kNow>=9?(km>=9&&km<=kNow):(km>=9||km<=kNow);return ok&&(!cs||cs.some(c=>codes.includes(c)))});
+  const copies=Object.values(DV.copies||{}).filter(c=>c.statut==='Corrigée');
+  const R=rougeDe(j);
+  const plan=j>=8?[['Cette semaine','Relis le cours de chaque chapitre et refais les exemples sur ton cahier.'],['La semaine prochaine','Entraîne-toi sur les compétences où tu te trompes, puis fais un devoir blanc.'],['La veille','Relis tes fiches et les erreurs de tes copies corrigées. Dors tôt.']]
+    :j>=3?[['Aujourd\'hui et demain','Relis le cours et fais « S\'entraîner » sur chaque chapitre.'],['Avant le devoir','Fais le devoir blanc, puis refais les questions ratées.'],['La veille','Relis tes fiches et les erreurs de tes copies corrigées. Prépare ton matériel.']]
+    :[['Maintenant','Fais le devoir blanc sans aide, comme le jour du devoir.'],['Ensuite','Revois la correction des questions ratées et la méthode : On sait que… Or… Donc…'],['Le jour J','Matériel prêt (règle, équerre, compas, rapporteur), lis tout le sujet avant de commencer.']];
+  return `<div class="chap-head" style="background:${R.bg};border:2px solid ${R.bd};color:${R.fg};border-radius:18px;padding:16px">
+      <p class="eyebrow" style="color:${R.sub}">📆 Révision · ${esc(clsLab(P.classe))}</p><h1 style="color:${R.fg}">${esc(e.titre)}</h1>
+      <p style="color:${R.fg}"><b>${esc(quandTxt(e))}</b></p></div>
+    ${bulle('Mon plan de révision',`<div class="steps">${plan.map((p,i)=>`<div class="step"><span class="num">${i+1}</span><div><b>${p[0]}</b><p>${p[1]}</p></div></div>`).join('')}</div>`)}
+    <section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">1 · Les chapitres à réviser</p>
+      <div class="clist">${codes.map(k=>{const id=niv+'-'+k,c=LV[niv].chaps.find(x=>x[0]===k),r=rec(id),l=r.evals[r.evals.length-1];if(!c)return '';
+        return `<div class="crow ${c[2]==='geo'?'geo':''}"><div class="ct"><b>${esc(c[1])}</b><small>${r.best!=null?'Quiz '+r.best+'/10':'Quiz à faire'}${l?' · dernière éval. '+l.note+'/20':''}</small></div>${ready(id)?`<button class="btn sm" data-act="open" data-c="${id}">Réviser</button>`:'<span class="pill soon">Bientôt</span>'}</div>`}).join('')}</div></section>
+    <section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">2 · Le devoir blanc</p>
+      <p>10 questions tirées des chapitres du devoir, notées sur 20, avec la correction détaillée à la fin. Il ne change pas ton groupe de besoin : c'est pour t'entraîner.</p>
+      <div class="row"><button class="btn gold" data-act="rv-blanc" data-e="${esc(e.id)}">Faire un devoir blanc</button></div></section>
+    <section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">3 · Les devoirs passés</p>
+      ${passes.length?`<div class="clist">${passes.map(([k,lab])=>{const id=niv+'-M'+k,r=rec(id),l=r.evals[r.evals.length-1];return `<div class="crow"><span class="no" style="font-size:13px">${k}</span><div class="ct"><b>Évaluation de ${esc(lab)}</b><small>${l?'Ta note : '+l.note+'/20':'Pas encore faite'}</small></div><button class="btn sm" data-act="open" data-c="${id}">${l?'Refaire':'Faire'}</button></div>`}).join('')}</div>`:'<p class="small">Les évaluations du mois déjà passées apparaîtront ici.</p>'}
+      ${copies.length?`<div class="row"><button class="btn ghost" data-act="devoirs">Revoir mes ${copies.length} copie${copies.length>1?'s':''} corrigée${copies.length>1?'s':''}</button></div>`:''}</section>
+    <button class="btn ghost" data-act="home">Retour à l'accueil</button>`}
+/* devoir blanc : 10 questions des chapitres, ne compte pas dans le groupe de besoin */
+function devoirBlanc(e){const niv=e.niv,codes=(e.chaps.length?e.chaps:planDe(niv).filter(c=>c.deb<=e.date).slice(-3).map(c=>c.code)).filter(c=>REG[niv+'-'+c]&&!REG[niv+'-'+c].monthly);
+  if(!codes.length)return null;
+  const id=niv+'-B'+String(e.id).replace(/[^A-Za-z0-9]/g,'').slice(-10);
+  REG[id]={blanc:true,titre:'Devoir blanc · '+e.titre,codes,serie:()=>{const pools=codes.map(c=>shuffle(REG[niv+'-'+c].serie()));const out=[];let i=0;
+    while(out.length<10&&pools.some(p=>p.length)){const p=pools[i%pools.length];if(p.length)out.push(p.pop());i++}return out}};
+  return id}
+
+/* ---------- côté professeur ---------- */
+function profAlertesHTML(){if(!PR.me)return '';const cls=profClasses().filter(c=>/^[3-6]/.test(c)),out=[];
+  if(mathsProf()&&!(PR.me.admin)){cls.forEach(cl=>{const E=progEtat(cl);if(E.niveau)out.push(`<section class="card" role="alert" style="display:flex;flex-direction:column;gap:8px;border:2px solid ${NIVC[E.niveau][0]};border-top:8px solid ${NIVC[E.niveau][0]}">
+      <p class="eyebrow" style="color:${NIVC[E.niveau][0]}">⏱ Progression · ${esc(clsLab(cl))} · ${NIVC[E.niveau][1]}</p><p>${esc(retardTexte(E,cl))}</p>
+      <div class="row"><button class="btn sm" data-act="pg-cl" data-c="${cl}">Mettre à jour ma progression</button></div></section>`)})}
+  const by={};cls.forEach(cl=>prochains(cl,PR.ctrl||[]).forEach(e=>{const k=e.id;if(by[k])by[k].l.push(cl);else by[k]=Object.assign({},e,{l:[cl]})}));
+  const ev=Object.values(by).map(e=>Object.assign(e,{clLab:e.l.map(clsLab).join(', ')}));
+  ev.sort((a,b)=>a.date-b.date).slice(0,8).forEach(e=>out.push(alerteDevoirHTML(e,false)));
+  const pas={};cls.forEach(cl=>evenements(cl,PR.ctrl||[]).filter(e=>{const j=joursAvant(e.date);return e.jour?j<0&&j>=-14:j<=-5&&j>=-18}).forEach(e=>{if(pas[e.id])pas[e.id].l.push(cl);else pas[e.id]=Object.assign({},e,{l:[cl]})}));
+  Object.values(pas).map(e=>Object.assign(e,{clLab:e.l.map(clsLab).join(', ')})).sort((a,b)=>b.date-a.date).slice(0,4).forEach(e=>out.push(remedApresHTML(e)));
+  return out.join('')}
+function profProgHTML(){const cls=profClasses().filter(c=>/^[3-6]/.test(c));
+  if(!cls.length)return `<section class="card"><p>Ajoutez vos classes dans « Mon compte » pour suivre votre progression.</p></section>`;
+  if(!PR.pcl||!cls.includes(PR.pcl))PR.pcl=cls[0];
+  const cl=PR.pcl,E=progEtat(cl),t=today0(),canMark=mathsProf();
+  const evs=evenements(cl,PR.ctrl||[]);
+  const rows=E.P.map(c=>{const m=E.M[c.code],et=m&&m.etat,late=E.enRetard.includes(c),now=c.deb<=t&&t<=c.fin;
+    const pill=et==='Terminé'?`<span class="pill ok">Terminé${m.fin?' le '+esc(m.fin):''}</span>`:et==='En cours'?`<span class="pill mid">En cours${m.debut?' depuis le '+esc(m.debut):''}</span>`:late?`<span class="pill bad">En retard</span>`:now?`<span class="pill mid">Prévu maintenant</span>`:'';
+    const btns=!canMark?'':et==='Terminé'?`<button class="btn ghost sm" data-act="pg-mark" data-k="${c.code}" data-v="En cours">↺ Rouvrir</button>`:et==='En cours'?`<button class="btn gold sm" data-act="pg-mark" data-k="${c.code}" data-v="Terminé">✓ Terminé</button><button class="btn ghost sm" data-act="pg-mark" data-k="${c.code}" data-v="">Annuler</button>`:`<button class="btn sm" data-act="pg-mark" data-k="${c.code}" data-v="En cours">▶ Commencé</button><button class="btn ghost sm" data-act="pg-mark" data-k="${c.code}" data-v="Terminé">✓ Déjà terminé</button>`;
+    const evAvant=evs.filter(e=>e.date>=c.deb&&e.date<new Date(c.fin.getTime()+3*DAY)&&e.date>(E.P[c.n-2]?new Date(E.P[c.n-2].fin.getTime()+3*DAY):0));
+    return evAvant.map(e=>`<div class="crow" style="border-left-color:var(--red);background:var(--red-soft)"><div class="ct"><b>📆 ${esc(e.titre)}</b><small>${e.jour?esc(frDate(e.date)):'Semaine du '+esc(frDate(e.date,{day:'numeric',month:'long'}))} · ${esc(e.par)}</small></div></div>`).join('')+
+      `<div class="crow" style="flex-wrap:wrap;${late?'border-left-color:var(--red)':now?'border-left-color:var(--gold)':''}"><span class="no">${c.n}</span><div class="ct" style="flex:1 1 200px;min-width:0"><b>${esc(c.titre)}</b><small>Prévu : ${phLab(c.s)}${c.e!==c.s?' → '+phLab(c.e):''} · ${frDate(c.deb,{day:'numeric',month:'short'})} – ${frDate(c.fin,{day:'numeric',month:'short'})}</small>${pill?`<div style="margin-top:4px">${pill}</div>`:''}</div>${btns?`<div class="row" style="gap:6px;flex:1 1 100%;justify-content:flex-end">${btns}</div>`:''}</div>`}).join('');
+  const pct=Math.round(E.nbFini/E.P.length*100),att=E.P.filter(c=>c.fin<t).length,pctAtt=Math.round(att/E.P.length*100);
+  return `<div class="chap-head"><h1>📅 Ma progression</h1><p class="small">Marquez chaque chapitre quand vous le commencez et quand vous le terminez. L'application compare avec la <b>progression harmonisée 2025-2026</b> (IA Dakar, Pikine-Guédiawaye, Rufisque) et vous alerte en cas de retard.</p></div>
+  <div class="skills noprint">${cls.map(c=>{const n=progEtat(c).niveau;return `<button class="skill ${c===cl?'on':''}" data-act="pg-cl" data-c="${c}">${esc(clsLab(c))}${n?` <span class="notif" style="background:${NIVC[n][0]}">!</span>`:''}</button>`}).join('')}</div>
+  <section class="card" style="display:flex;flex-direction:column;gap:10px;border-top:8px solid ${NIVC[E.niveau][0]}">
+    <p class="eyebrow" style="color:${NIVC[E.niveau][0]}">${esc(clsLab(cl))} · ${NIVC[E.niveau][1]}</p><p>${esc(retardTexte(E,cl))}</p>
+    <p class="small"><b>${E.nbFini}</b> chapitre${E.nbFini>1?'s':''} terminé${E.nbFini>1?'s':''} sur ${E.P.length} · la progression harmonisée en prévoit <b>${att}</b> à cette date.</p>
+    <div class="bar" style="position:relative" aria-label="Chapitres terminés"><span style="width:${pct}%"></span><i style="position:absolute;top:-3px;bottom:-3px;left:${pctAtt}%;width:3px;background:var(--ink);border-radius:2px" title="Prévu à cette date"></i></div>
+    <p class="small">Le trait noir indique où vous devriez être aujourd'hui.</p>
+    ${PR.pgErr?`<p class="err">${esc(PR.pgErr)}</p>`:''}${!canMark?'<p class="small">Seul le professeur de mathématiques de la classe marque la progression.</p>':''}</section>
+  <section class="clist">${rows}</section>
+  ${ctrlFormHTML(cls)}
+  ${PR.me&&PR.me.admin?celluleHTML():''}`}
+/* programmer un devoir en classe */
+function ctrlFormHTML(cls){const ms=(PR.me&&!PR.me.admin?PR.me.matieres:MATIERES)||['Mathématiques'],nivs=ORD.filter(n=>cls.some(c=>c[0]===n[0]));
+  const C=FM.ct||(FM.ct={niv:(PR.pcl||cls[0])[0]+'e',classes:[PR.pcl||cls[0]],mat:ms[0],titre:'',chap:[]});
+  if(!nivs.includes(C.niv))C.niv=nivs[0];if(!ms.includes(C.mat))C.mat=ms[0];
+  const ncls=cls.filter(c=>c[0]===C.niv[0]),chaps=C.mat==='Mathématiques'?(LV[C.niv].chaps||[]):[];
+  const L=(PR.ctrl||[]).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  return `<section class="card" style="display:flex;flex-direction:column;gap:12px"><p class="eyebrow">${C.id?'Modifier le devoir programmé':'Programmer un devoir en classe'}</p>
+    <p class="small">Vos élèves voient le compte à rebours sur leur accueil 2 semaines avant (de plus en plus rouge), avec des révisions et un devoir blanc.</p>
+    <div class="form">
+      <label class="full">Titre<input data-f="ct.titre" maxlength="80" list="ct-titres" value="${esc(C.titre||'')}" placeholder="Ex. : Devoir n°1 du premier semestre"><datalist id="ct-titres"><option>Devoir n°1 du premier semestre</option><option>Devoir n°2 du premier semestre</option><option>Devoir n°1 du second semestre</option><option>Devoir n°2 du second semestre</option><option>Composition du premier semestre</option><option>Composition du second semestre</option><option>Interrogation écrite</option></datalist></label>
+      ${ms.length>1?`<label>Matière<select data-f="ct.mat" data-rr>${ms.map(m=>`<option ${C.mat===m?'selected':''}>${esc(m)}</option>`).join('')}</select></label>`:''}
+      <label>Niveau<select data-f="ct.niv" data-rr>${nivs.map(n=>`<option value="${n}" ${C.niv===n?'selected':''}>${n}</option>`).join('')}</select></label>
+      <label>Date du devoir<input type="date" data-f="ct.date" value="${esc(C.date||'')}"></label></div>
+    <div><p class="lab">Classes</p><div class="cgrid">${ncls.map(c=>`<label><input type="checkbox" data-f="ct.classes" value="${c}" ${(C.classes||[]).includes(c)?'checked':''}> ${esc(clsLab(c))}</label>`).join('')}</div></div>
+    ${chaps.length?`<div><p class="lab">Chapitres du devoir</p><div class="cgrid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">${chaps.map(c=>`<label><input type="checkbox" data-f="ct.chap" value="${c[0]}" ${(C.chap||[]).includes(c[0])?'checked':''}> ${esc(c[1])}</label>`).join('')}</div></div>`:''}
+    <div class="form"><label class="full">Consigne pour les élèves (facultatif)<input data-f="ct.rq" maxlength="200" value="${esc(C.rq||'')}" placeholder="${C.mat==='Mathématiques'?'Ex. : apporter règle, équerre et compas':'Ex. : chapitres et notions du devoir'}"></label></div>
+    ${PR.ctErr?`<p class="err">${esc(PR.ctErr)}</p>`:''}
+    <div class="row"><button class="btn gold" data-act="pk-save" ${PR.ctBusy?'disabled':''}>${PR.ctBusy?'Enregistrement…':C.id?'Enregistrer':'Programmer le devoir'}</button>${C.id?'<button class="btn ghost" data-act="pk-new">Annuler</button>':''}</div>
+    ${L.length?`<div class="clist">${L.map(c=>{const d=parseIso(c.date),j=d?joursAvant(d):0,R=rougeDe(j);return `<div class="crow" style="${j>=0&&j<=14?`border-left-color:${R.bd}`:j<0?'opacity:.6':''}"><div class="ct"><b>${esc(c.titre)}</b><small>${d?esc(frDate(d)):''}${j>=0?' · J-'+j:' · passé'} · ${esc(matCourt(c.matiere))} · ${esc((c.classes||[]).map(clsLab).join(', '))}${c.chapitres&&c.chapitres.length?' · '+esc(nomsChaps(c.niveau||((c.classes||[''])[0][0]+'e'),c.chapitres).join(', ')):''}${PR.me&&PR.me.admin&&c.par?' · '+esc(c.par):''}</small></div>
+      <div class="row" style="gap:6px"><button class="btn ghost sm" data-act="pk-edit" data-id="${esc(c.id)}">Modifier</button>${PR.ctDel===c.id?`<button class="btn sm" style="background:var(--red);color:#fff" data-act="pk-del-ok" data-id="${esc(c.id)}">Confirmer</button>`:`<button class="btn ghost sm" data-act="pk-del" data-id="${esc(c.id)}">Supprimer</button>`}</div></div>`}).join('')}</div>`:''}</section>`}
+/* vue d'ensemble de la cellule (administrateur) */
+function celluleHTML(){const cls=[...new Set((PR.prog||[]).map(x=>x.classe).concat(STDCL.filter(c=>!/HK$/.test(c))))].filter(c=>/^[3-6]/.test(c)).sort(clsSort);
+  const prof=cl=>{const p=(PR.profs||[]).filter(x=>x.actif&&x.classes.includes(cl)&&(x.matieres||[]).includes('Mathématiques'));return p.map(x=>x.nom).join(', ')};
+  return `<section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">Progression de la cellule</p>
+    <div class="tablewrap"><table class="bilan"><tr><th>Classe</th><th>Professeur</th><th>Chapitre en cours</th><th>Terminés</th><th>État</th></tr>
+    ${cls.map(cl=>{const E=progEtat(cl),any=Object.keys(E.M).length;return `<tr><td><b>${esc(clsLab(cl))}</b></td><td>${esc(prof(cl)||'—')}</td><td>${any&&E.actuel?esc(E.actuel.titre):'<span class="small">rien de marqué</span>'}</td><td>${E.nbFini}/${E.P.length}</td><td style="color:${NIVC[E.niveau][0]};font-weight:800">${any||E.niveau?NIVC[E.niveau][1]+(E.sem?' · '+E.sem+' sem.':''):'—'}</td></tr>`}).join('')}</table></div></section>`}
+
+function v3Act(a,b){
+  if(a==='rv-open'){S.view='revis';S.rv=b.dataset.e;render();window.scrollTo(0,0);return}
+  if(a==='rv-blanc'){const e=mesEvenements().find(x=>x.id===b.dataset.e);const id=e&&devoirBlanc(e);if(!id){toast('Les chapitres de ce devoir ne sont pas encore dans l\'application.');return}
+    S.view='chap';S.cid=id;S.niv=e.niv;S.tab='eval';const s=st(id);s.eval=null;s.sheet=null;render();window.scrollTo(0,0);return}
+  if(a==='pg-cl'){PR.tab='prog';PR.pcl=b.dataset.c;PR.pgErr='';FM.ct=null;render();window.scrollTo(0,0);return}
+  if(a==='pg-mark'){const cl=PR.pcl,k=b.dataset.k,v=b.dataset.v;if(PR.pgBusy)return;PR.pgBusy=true;PR.pgErr='';
+    /* affichage immédiat, puis enregistrement */
+    const L=PR.prog=(PR.prog||[]).filter(x=>!(x.classe===cl&&x.chap===k)),d=new Date().toLocaleDateString('fr-FR'),old=marquesDe(cl)[k];
+    if(v)L.push({classe:cl,chap:k,etat:v,debut:v==='En cours'?d:(old&&old.debut)||'',fin:v==='Terminé'?d:''});render();
+    profOp({op:'progression',classe:cl,chap:k,etat:v}).then(r=>{PR.pgBusy=false;if(r.ok){if(r.prog)PR.prog=r.prog;toast(v==='Terminé'?'Chapitre terminé':v?'Chapitre commencé':'Marque retirée')}else PR.pgErr=r.erreur||'Enregistrement impossible.';render()});return}
+  if(a==='pk-new'){FM.ct=null;PR.ctErr='';render();return}
+  if(a==='pk-edit'){const c=(PR.ctrl||[]).find(x=>x.id===b.dataset.id);if(!c)return;FM.ct={id:c.id,titre:c.titre,niv:c.classes[0][0]+'e',classes:c.classes.slice(),mat:c.matiere,date:c.date,chap:(c.chapitres||[]).slice(),rq:c.remarque};PR.ctErr='';render();return}
+  if(a==='pk-del'){PR.ctDel=b.dataset.id;render();return}
+  if(a==='pk-del-ok'){profOp({op:'controleSuppr',id:b.dataset.id}).then(r=>{PR.ctDel=null;if(r.ok){PR.ctrl=r.controles||PR.ctrl.filter(x=>x.id!==b.dataset.id);toast('Devoir retiré du calendrier')}else toast(r.erreur);render()});return}
+  if(a==='pk-save'){const C=FM.ct||{};if(PR.ctBusy)return;
+    const cls=(C.classes||[]).filter(c=>c[0]===String(C.niv)[0]);
+    if(String(C.titre||'').trim().length<3){PR.ctErr='Écrivez le titre du devoir.';render();return}
+    if(!parseIso(C.date)){PR.ctErr='Choisissez la date du devoir.';render();return}
+    if(!cls.length){PR.ctErr='Cochez au moins une classe.';render();return}
+    PR.ctBusy=true;PR.ctErr='';render();
+    profOp({op:'controle',id:C.id||'',titre:C.titre,date:C.date,classes:cls,matiere:C.mat||'Mathématiques',chapitres:C.mat==='Mathématiques'?(C.chap||[]):[],remarque:C.rq||''}).then(r=>{PR.ctBusy=false;
+      if(r.ok){PR.ctrl=r.controles||PR.ctrl;toast(C.id?'Devoir modifié':'Devoir programmé : vos élèves voient le compte à rebours');FM.ct=null}else PR.ctErr=r.erreur||'Enregistrement impossible.';render()});return}
+}
+
 /* ---------- actions ---------- */
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')e.target.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('modal').hidden=true});
@@ -4964,6 +5186,7 @@ document.addEventListener('click',e=>{
   const a=b.dataset.act,cid=S.cid,s=cid?st(cid):null;
   if(a==='nav-back'){navBack();return}
   if(a&&/^(role-|pa-|pm-)/.test(a)){v21Act(a,b);return}
+  if(a&&/^(rv-|pg-|pk-)/.test(a)){v3Act(a,b);return}
   if(a&&/^(pf-etab|cp-etab|cp-save|devoirs$|zoom$|dv-|pt-|pl-|pc-|pd-|pp-)/.test(a)){v2Act(a,b);return}
   if(a==='posi'){if(DB.profil&&DB.profil.niveau&&DB.profil.niveau!==b.dataset.n){toast('Ton test de positionnement est celui de '+DB.profil.niveau+'.');return}S.view='posi';S.niv=b.dataset.n;PS.review=false;PS.run=null;render();window.scrollTo(0,0);return}
   if(a==='defis'){if(!canNiv(b.dataset.n)){nivLock(b.dataset.n);return}S.view='defis';S.niv=b.dataset.n;render();window.scrollTo(0,0);return}
@@ -5049,7 +5272,7 @@ document.addEventListener('click',e=>{
   else if(a==='quiz-next'){const Q=s.quiz,r=rec(cid);if(Q.i===9){Q.done=true;if(r.best===null||Q.score>r.best)r.best=Q.score;save();
       track({type:'Quiz',code:cid,chapitre:chapInfo(cid).titre,note:Q.score,sur:10,duree:Math.round((Date.now()-(Q.start||Date.now()))/1000),revoir:[...new Set(Q.wrong||[])].join(', ')})}else{Q.i++;Q.picked=null;Q.answered=false}}
   else if(a==='eval-start'||a==='eval-again'){s.sheet=null;s.review=false;S.tab='eval';
-    s.eval=(REG[cid].monthly||rec(cid).best>=SEUIL)?{qs:shuffle(REG[cid].serie()),i:0,picked:[],start:Date.now(),done:false}:null}
+    s.eval=(REG[cid].monthly||REG[cid].blanc||rec(cid).best>=SEUIL)?{qs:shuffle(REG[cid].serie()),i:0,picked:[],start:Date.now(),done:false}:null}
   else if(a==='eval-next'){const E=s.eval;if(E.picked[E.i]==null)return;
     if(E.i<9){E.i++}else{E.done=true;const items=E.qs.map((q,k)=>({skill:q.skill,ok:q.choices[E.picked[k]].ok}));
       const sec=Math.round((Date.now()-E.start)/1000),d=new Date(),r=rec(cid);
@@ -5057,7 +5280,7 @@ document.addEventListener('click',e=>{
         date:d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
         duree:Math.floor(sec/60)+' min '+String(sec%60).padStart(2,'0')+' s'};
       items.forEach(x=>recordSkill(cid,x.skill,x.ok));r.evals.push(R);save();s.sheet=R;
-      track({type:REG[cid].monthly?'Évaluation du mois':'Évaluation',code:cid,chapitre:chapInfo(cid).titre,note:R.note,sur:20,duree:sec,tentative:R.attempt,revoir:[...new Set(items.filter(x=>!x.ok).map(x=>x.skill))].join(', ')})}}
+      track({type:REG[cid].blanc?'Devoir blanc':REG[cid].monthly?'Évaluation du mois':'Évaluation',code:cid,chapitre:chapInfo(cid).titre,note:R.note,sur:20,duree:sec,tentative:R.attempt,revoir:[...new Set(items.filter(x=>!x.ok).map(x=>x.skill))].join(', ')})}}
   else if(a==='review'){s.review=!s.review}
   render();
   if(['tab','open','home','level','quiz-start','eval-start','eval-again','next','quiz-next','eval-next','skill','save-profil'].includes(a))window.scrollTo({top:0,behavior:'smooth'});
