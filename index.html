@@ -3894,8 +3894,8 @@ const PS={run:null,review:false};
 function posiRec(n){DB.posi=DB.posi||{};return DB.posi[n]||null}
 function posiLevel(s){return s>=4?['Acquis','ok']:s===3?['En cours d\'acquisition','mid']:['À renforcer','ko']}
 const GROUPES=[
-  {k:1,nom:'Remédiation',c:'ko',min:0,txt:"Tu reprends les bases de l'année précédente avec un plan de révision guidé. M. Thiam te suivra de près pendant les séances de soutien."},
-  {k:2,nom:'Consolidation',c:'mid',min:13,txt:"Tes bases sont là mais fragiles sur certains domaines. Révise les chapitres indiqués avant d'attaquer le programme."},
+  {k:1,nom:'Remédiation',c:'ko',min:0,txt:"Tu reprends les bases de l'année précédente avec un plan de révision guidé. M. Gning, chargé de la remédiation (2 h par semaine), te suivra pendant les séances."},
+  {k:2,nom:'Application',c:'mid',min:13,txt:"Tes bases sont là mais fragiles sur certains domaines. Révise les chapitres indiqués avant d'attaquer le programme."},
   {k:3,nom:'Approfondissement',c:'ok',min:20,txt:"Tes acquis sont solides. Tu peux aller plus loin (défis, olympiades) et aider tes camarades en tutorat."}];
 function posiGroupe(score){return GROUPES.slice().reverse().find(g=>score>=g.min)}
 function posiPrio(r){let k=0;r.doms.forEach((v,i)=>{if(v<r.doms[k])k=i});return k}
@@ -4005,7 +4005,7 @@ function posiProfHTML(R){
   const doms={};E.forEach(e=>e.weak.forEach(w=>{(doms[w.nom]=doms[w.nom]||[]).push(Object.assign({e},w))}));
   const dl=Object.entries(doms).sort((a,b)=>b[1].length-a[1].length);
   return `<section class="card" style="display:flex;flex-direction:column;gap:10px;border-top:6px solid var(--gold)"><p class="eyebrow">🎯 Groupes de besoin${PR.cl?' · '+esc(PR.cl):''}</p>
-    <p class="small">Placement automatique d'après le dernier test de positionnement : Remédiation (0 à 12/25), Consolidation (13 à 19), Approfondissement (20 à 25).</p>
+    <p class="small">Placement automatique d'après le dernier test de positionnement : Remédiation (0 à 12/25), Application (13 à 19), Approfondissement (20 à 25).</p>
     <div class="levels" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">${grp}</div></section>
   ${dl.length?`<section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">Besoins par domaine et suivi du rattrapage</p>
     <p class="small">Élèves à 3/5 ou moins sur le domaine. Rattrapé = quiz ≥ 7/10 ou évaluation ≥ 10/20 sur un chapitre lié, après le test.</p>
@@ -4867,9 +4867,9 @@ function remedAlertHTML(){const R=remedInfo();if(!R)return '';const P=DB.profil,
   return `<section class="card" role="alert" style="display:flex;flex-direction:column;gap:10px;border:2px solid var(--red);border-top:8px solid var(--red)">
     <p class="eyebrow" style="color:var(--red)">⚠️ Remédiation · 2 h chaque semaine</p>
     <h2 style="font-size:20px;margin:0">${esc(P.prenom)}, tu es dans le groupe de remédiation</h2>
-    <p>D'après ta dernière évaluation (${esc(R.src)} : <b>${fmtN(R.score)}/${R.sur}</b>), tu dois reprendre des bases. Suis <b>2 heures de remédiation chaque semaine</b> avec ton professeur de maths et travaille ton plan de rattrapage.</p>
-    ${cr&&cr.creneau?`<div class="enonce" style="white-space:normal"><p>📅 <b>${esc(cr.creneau)}</b>${cr.lieu?' · 📍 '+esc(cr.lieu):''}</p>${cr.remarque?`<p class="small" style="margin-top:4px">${esc(cr.remarque)}</p>`:''}</div>`:`<p class="small">Ton professeur va t'indiquer le jour, l'heure et la salle.</p>`}
-    <p class="small">Ton groupe est recalculé après chaque évaluation du mois : 10/20 ou plus, tu passes en consolidation ; 16/20 ou plus, en approfondissement.</p>
+    <p>D'après ta dernière évaluation (${esc(R.src)} : <b>${fmtN(R.score)}/${R.sur}</b>), tu dois reprendre des bases. Suis <b>2 heures de remédiation chaque semaine</b> avec <b>M. Gning</b>, le professeur chargé de la remédiation, et travaille ton plan de rattrapage.</p>
+    ${cr&&cr.creneau?`<div class="enonce" style="white-space:normal"><p>📅 <b>${esc(cr.creneau)}</b>${cr.lieu?' · 📍 '+esc(cr.lieu):''}</p>${cr.remarque?`<p class="small" style="margin-top:4px">${esc(cr.remarque)}</p>`:''}</div>`:`<p class="small">M. Gning ou ton professeur va t'indiquer le jour, l'heure et la salle. Les élèves du groupe y passent à tour de rôle.</p>`}
+    <p class="small">Ton groupe est recalculé après chaque évaluation du mois : 10/20 ou plus, tu passes en application ; 16/20 ou plus, en approfondissement.</p>
     <div class="row">${typeof POSI!=='undefined'&&POSI[P.niveau]?`<button class="btn gold" data-act="posi" data-n="${P.niveau}">Mon plan de rattrapage</button>`:''}<button class="btn ghost" data-act="level" data-n="${P.niveau}">Mes chapitres</button></div></section>`}
 /* en-tête officiel et partie II de l'évaluation du mois */
 function mensK(cid){return String(cid).split('-M')[1]}
@@ -4975,7 +4975,14 @@ const EVALH={
  '5e':[['N4',EV_ETAB],['D3',EV_IEF],['F3','Composition du premier semestre',1],['M4',EV_ETAB],['Y1',EV_IEF],['U3','Composition du second semestre',2]],
  '4e':[['N4',EV_ETAB],['D3',EV_IEF],['F3','Composition du premier semestre',1],['M4',EV_ETAB],['Y1',EV_IEF],['U3','Composition du second semestre',2]],
  '3e':[['N4',EV_ETAB],['D3',EV_IEF],['F1','Composition du premier semestre',1],['M4',EV_ETAB],['A4',EV_IEF],['U1','Composition du second semestre',2]]};
-const PH_VAC=[11,12,24,25]; /* semaines de vacances : déc. S4, janv. S1, avril S1-S2 */
+const PH_VAC=[11,12,24,25];
+/* décisions de la cellule (rencontre du 15 octobre 2026) */
+const CELL_DATES={'2026':{
+  exact:{'6e':{N4:'2026-11-24'},'5e':{N4:'2026-11-24'},'4e':{N4:'2026-11-26'},'3e':{N4:'2026-11-26'}},
+  titres:{N4:'1re évaluation harmonisée',D3:'2e évaluation (sujets de l\'IEF, date à préciser)'},
+  posi:'2026-10-20',
+  rdv:[['2026-11-17','Rencontre de la cellule : validation des sujets de la 1re évaluation harmonisée, barèmes et grilles communes','En ligne']]}};
+const cellY=()=>CELL_DATES[String(schoolY())]||{exact:{},titres:{},rdv:[]}; /* semaines de vacances : déc. S4, janv. S1, avril S1-S2 */
 const DAY=864e5;
 const phIdx=c=>PH_M.indexOf(c[0])*4+(+c[1]-1);
 const phLab=i=>PH_LAB[Math.floor(i/4)]+' S'+(i%4+1);
@@ -5016,10 +5023,12 @@ function chapsAvant(niv,i,depuis){return planDe(niv).filter(c=>c.s<=i&&c.s>depui
 function evenements(cl,ctrls){const niv=cl[0]+'e',E=EVALH[niv]||[],out=[];
   (ctrls||[]).filter(c=>(c.classes||[]).includes(cl)).forEach(c=>{const d=parseIso(c.date)||parseFr(c.date);if(d)out.push({id:'C:'+c.id,titre:c.titre,date:d,jour:true,chaps:c.chapitres||[],matiere:c.matiere||'Mathématiques',rq:c.remarque||'',par:c.par||'',niv,cl})});
   let prev=-1,sem1=-1;
-  E.forEach(([w,lab,compo])=>{const i=phIdx(w),d=wkMon(i),depuis=compo===1?-1:compo===2?sem1:prev;
+  const CY=cellY(),ex=(CY.exact[niv]||{});
+  if(CY.posi){const d=parseIso(CY.posi);if(d)out.push({id:'P:'+niv,titre:'Test de positionnement',date:d,jour:true,chaps:[],matiere:'Mathématiques',rq:'Sur l\'application ProfDeMaths 2.0 : il te place dans ton groupe (remédiation, application ou approfondissement).',par:'Cellule de mathématiques',niv,cl,posi:true})}
+  E.forEach(([w,lab,compo])=>{const i=phIdx(w),exa=ex[w]&&parseIso(ex[w]),d=exa||wkMon(i),depuis=compo===1?-1:compo===2?sem1:prev;
     if(compo===1)sem1=i;
-    const proche=out.some(o=>o.matiere==='Mathématiques'&&Math.abs(o.date-d)<=8*DAY);
-    if(!proche)out.push({id:'H:'+niv+':'+w,titre:lab,date:d,jour:false,chaps:chapsAvant(niv,i,depuis),matiere:'Mathématiques',rq:'',par:'Progression harmonisée',niv,cl,harm:true});
+    const proche=out.some(o=>!o.posi&&o.matiere==='Mathématiques'&&Math.abs(o.date-d)<=8*DAY);
+    if(exa||!proche)out.push({id:'H:'+niv+':'+w,titre:CY.titres[w]||lab,date:d,jour:!!exa,chaps:chapsAvant(niv,i,depuis),matiere:'Mathématiques',rq:'',par:exa?'Cellule de mathématiques':'Progression harmonisée',niv,cl,harm:!exa,cell:!!exa});
     prev=i});
   return out.sort((a,b)=>a.date-b.date)}
 function prochains(cl,ctrls,max){return evenements(cl,ctrls).filter(e=>{const j=joursAvant(e.date);return j>=0&&j<=(max==null?14:max)||(!e.jour&&j<0&&j>-5)})}
@@ -5034,16 +5043,16 @@ function nomsChaps(niv,codes){return (codes||[]).map(k=>{const c=LV[niv]&&LV[niv
 function alerteDevoirHTML(e,eleve){const R=rougeDe(joursAvant(e.date)),ch=nomsChaps(e.niv,e.chaps);
   return `<section class="card" role="${joursAvant(e.date)<=3?'alert':'status'}" style="display:flex;flex-direction:column;gap:8px;background:${R.bg};border:2px solid ${R.bd};color:${R.fg}">
     <div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:nowrap">
-      <div style="min-width:0"><p class="eyebrow" style="color:${R.sub}">📆 ${eleve?'Devoir à préparer':esc(e.clLab||clsLab(e.cl))+' · devoir à venir'} · ${esc(matCourt(e.matiere))}</p>
+      <div style="min-width:0"><p class="eyebrow" style="color:${R.sub}">📆 ${e.posi?'Test à passer':eleve?'Devoir à préparer':esc(e.clLab||clsLab(e.cl))+' · devoir à venir'} · ${esc(matCourt(e.matiere))}</p>
       <h2 style="font-size:19px;margin:4px 0 0;color:${R.fg}">${esc(e.titre)}</h2>
       <p style="margin-top:2px;color:${R.fg}"><b>${esc(quandTxt(e))}</b></p></div>${compteHTML(e)}</div>
     ${ch.length?`<p class="small" style="color:${R.sub}">${e.harm?'Chapitres prévus':'Chapitres'} : ${esc(ch.join(' · '))}</p>`:''}
     ${e.rq?`<p class="small" style="color:${R.sub}">${esc(e.rq)}</p>`:''}
     ${e.harm?`<p class="small" style="color:${R.sub}">Date prévue par la progression harmonisée : ${eleve?'ton professeur te donnera le jour exact.':'programmez le jour exact dans « Progression » pour que vos élèves le voient.'}</p>`:''}
-    ${eleve?`<div class="row"><button class="btn gold" data-act="rv-open" data-e="${esc(e.id)}">Réviser pour ce devoir</button></div>`:profRappelHTML(e,R)}</section>`}
+    ${eleve?(e.posi?(typeof POSI!=='undefined'&&POSI[e.niv]&&!posiRec(e.niv)?`<div class="row"><button class="btn gold" data-act="posi" data-n="${e.niv}">Voir mon test de positionnement</button></div>`:''):`<div class="row"><button class="btn gold" data-act="rv-open" data-e="${esc(e.id)}">Réviser pour ce devoir</button></div>`):profRappelHTML(e,R)}</section>`}
 /* rappel au professeur avant le devoir : révision et évaluation */
 function profRappelHTML(e,R){const j=joursAvant(e.date);
-  const conseils=j>=8?['Prévoyez une <b>séance de révision</b> sur les chapitres du devoir.','Faites une <b>évaluation formative</b> (interrogation ou exercice à rendre en photo) pour repérer les élèves en difficulté.']
+  const conseils=e.posi?['Faites passer le test à <b>tous vos élèves</b> sur l\'application (un téléphone pour deux si besoin).','Ensuite, ouvrez « Listes et remédiation » : les élèves sont répartis en 3 groupes et le groupe 1 va en remédiation avec M. Gning.']:j>=8?['Prévoyez une <b>séance de révision</b> sur les chapitres du devoir.','Faites une <b>évaluation formative</b> (interrogation ou exercice à rendre en photo) pour repérer les élèves en difficulté.']
     :j>=3?['C\'est le moment de la <b>séance de révision</b> : exercices types et méthode de rédaction.','Une <b>évaluation courte</b> cette semaine vous dira qui doit encore travailler.']
     :['<b>Dernière révision</b> : rappelez la méthode (On sait que… Or… Donc…) et le matériel à apporter.','Vos élèves ont un <b>devoir blanc</b> dans l\'application : encouragez-les à le faire.'];
   return `<div style="background:rgba(255,255,255,.9);color:#3a1410;border-radius:12px;padding:10px 12px"><p class="small" style="color:#3a1410"><b>À faire avant le devoir</b></p><ul style="margin:4px 0 0;padding-left:18px;font-size:14px">${conseils.map(c=>`<li>${c}</li>`).join('')}</ul></div>
@@ -5052,7 +5061,7 @@ function profRappelHTML(e,R){const j=joursAvant(e.date);
 function remedApresHTML(e){const j=-joursAvant(e.date);
   return `<section class="card" style="display:flex;flex-direction:column;gap:8px;border:2px solid var(--blue);border-top:8px solid var(--blue)">
     <p class="eyebrow" style="color:var(--blue)">🩹 Après le devoir · ${esc(e.clLab||clsLab(e.cl))}</p>
-    <h2 style="font-size:18px;margin:0">${esc(e.titre)} : place à la remédiation</h2>
+    <h2 style="font-size:18px;margin:0">${esc(e.titre)} : ${e.posi?'formez les 3 groupes':'place à la remédiation'}</h2>
     <p class="small">Devoir ${e.jour?'fait le '+esc(frDate(e.date,{day:'numeric',month:'long'})):'de la semaine du '+esc(frDate(e.date,{day:'numeric',month:'long'}))}${j?' (il y a '+j+' jour'+(j>1?'s':'')+')':''}.</p>
     <ul style="margin:0;padding-left:18px;font-size:14px"><li>Corrigez le devoir en classe et repérez les <b>erreurs les plus fréquentes</b>.</li><li>Organisez une <b>séance de remédiation</b> pour les élèves sous la moyenne (groupe de remédiation : 2 h par semaine).</li><li>Proposez un <b>exercice de rattrapage</b> à rendre en photo, puis vérifiez les progrès à l'évaluation du mois.</li></ul>
     <div class="row"><button class="btn gold sm" data-act="pl-cl" data-c="${esc(e.l?e.l[0]:e.cl)}">👥 Groupe de remédiation</button><button class="btn ghost sm" data-act="pt-tab" data-t="devoirs">📝 Exercice de rattrapage</button></div></section>`}
@@ -5060,7 +5069,7 @@ function remedApresHTML(e){const j=-joursAvant(e.date);
 /* ---------- côté élève ---------- */
 function mesEvenements(){const P=DB.profil;if(!P||!P.classe||!/^[3-6]/.test(P.classe))return [];return evenements(P.classe,DV.ctrl||[])}
 function devoirAlertHTML(){const P=DB.profil;if(!P||!P.classe)return '';
-  const L=prochains(P.classe,DV.ctrl||[]);return L.map(e=>alerteDevoirHTML(e,true)).join('')}
+  const L=prochains(P.classe,DV.ctrl||[]).filter(e=>!(e.posi&&typeof posiRec==='function'&&posiRec(e.niv)));return L.map(e=>alerteDevoirHTML(e,true)).join('')}
 function revisHTML(){const P=DB.profil,e=mesEvenements().find(x=>x.id===S.rv);
   if(!P||!e)return `<section class="card"><p>Ce devoir n'est plus dans ton calendrier.</p></section><button class="btn ghost" data-act="home">Retour à l'accueil</button>`;
   const niv=e.niv,j=joursAvant(e.date),codes=e.chaps.length?e.chaps:planDe(niv).filter(c=>c.deb<=e.date).slice(-3).map(c=>c.code);
@@ -5103,6 +5112,8 @@ function profAlertesHTML(){if(!PR.me)return '';const cls=profClasses().filter(c=
   ev.sort((a,b)=>a.date-b.date).slice(0,8).forEach(e=>out.push(alerteDevoirHTML(e,false)));
   const pas={};cls.forEach(cl=>evenements(cl,PR.ctrl||[]).filter(e=>{const j=joursAvant(e.date);return e.jour?j<0&&j>=-14:j<=-5&&j>=-18}).forEach(e=>{if(pas[e.id])pas[e.id].l.push(cl);else pas[e.id]=Object.assign({},e,{l:[cl]})}));
   Object.values(pas).map(e=>Object.assign(e,{clLab:e.l.map(clsLab).join(', ')})).sort((a,b)=>b.date-a.date).slice(0,4).forEach(e=>out.push(remedApresHTML(e)));
+  (cellY().rdv||[]).forEach(([iso,titre,mode])=>{const d=parseIso(iso),j=d?joursAvant(d):-1;if(j<0||j>14)return;
+    out.push(`<section class="card" style="display:flex;flex-direction:column;gap:6px;border:2px solid var(--navy,#0F2552);border-top:8px solid var(--gold)"><div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:10px"><div style="min-width:0"><p class="eyebrow">🤝 Cellule de mathématiques · ${esc(mode)}</p><h2 style="font-size:18px;margin:4px 0 0">${esc(titre)}</h2><p style="margin-top:2px"><b>${esc(j===0?'Aujourd\'hui':j===1?'Demain':'Dans '+j+' jours')}, ${esc(frDate(d))}</b></p></div>${compteHTML({date:d})}</div><p class="small">Préparez vos propositions de sujets et de barèmes.</p></section>`)});
   return out.join('')}
 function profProgHTML(){const cls=profClasses().filter(c=>/^[3-6]/.test(c));
   if(!cls.length)return `<section class="card"><p>Ajoutez vos classes dans « Mon compte » pour suivre votre progression.</p></section>`;
