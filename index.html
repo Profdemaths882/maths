@@ -306,6 +306,32 @@ b.cx{color:var(--blue)}
 .figrow{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.figrow .fig{flex:1 1 130px;max-width:190px}
 .ang{position:relative;display:inline-block;padding-top:.3em;line-height:1}.ang::before{content:'^';position:absolute;left:0;right:0;top:-.15em;text-align:center;font-size:.85em}
 
+/* v2 : établissement, devoirs en photo, remédiation, espace prof */
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.segb{flex:1 1 180px;border:2px solid var(--line);background:var(--surface2);color:var(--ink);border-radius:12px;padding:12px 14px;font-weight:800;font-family:var(--display);font-size:15px;text-align:center}
+.segb.on{border-color:var(--gold);background:var(--gold-soft);color:var(--gold-ink)}
+.lab{font-weight:700;font-size:14px;color:var(--ink);margin-bottom:6px}
+.form textarea{font:inherit;font-size:16px;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--surface2);color:var(--ink);min-height:120px;resize:vertical;min-width:0}
+.form textarea:focus{outline:none;border-color:var(--gold)}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.thumb{position:relative;border-radius:12px;overflow:hidden;border:2px solid var(--line);aspect-ratio:3/4;background:var(--surface2)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.thumb button{position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:50%;border:none;background:rgba(0,0,0,.68);color:#fff;font-weight:800;line-height:1}
+.filebtn{position:relative;overflow:hidden;cursor:pointer}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.enonce{white-space:pre-wrap;background:var(--surface2);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;color:var(--ink)}
+.copie-img{width:100%;border-radius:12px;border:1px solid var(--line);display:block;cursor:zoom-in;background:#fff}
+.cgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.cgrid label{display:flex;align-items:center;gap:6px;font-weight:700;font-size:14px;border:1.5px solid var(--line);border-radius:10px;padding:8px;background:var(--surface2);color:var(--ink)}
+@media (max-width:420px){.cgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.notif{display:inline-flex;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--red);color:#fff;font-size:12px;font-weight:800;align-items:center;justify-content:center}
+.modal-card.wide{max-width:min(96vw,900px);text-align:left;align-items:stretch}
+.decouverte{background:linear-gradient(135deg,var(--gold-soft),var(--surface2));border:2px solid var(--gold);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.decouverte .t{font-size:12px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold-ink)}
+.decouverte ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:4px}
+.decouverte details summary{cursor:pointer;font-weight:800;color:var(--blue)}
+@media print{.top,.noprint,.foot,#toast,#modal{display:none!important}main#app>*:not(.printzone){display:none!important}body{background:#fff}.printzone{box-shadow:none;border:none}}
+
 </style>
 <header class="top"><div class="top-in">
   <img id="toplogo" alt="Logo Profdemaths 2.0">
@@ -3629,7 +3655,7 @@ async function flushQueue(){
 }
 async function registerPseudo(P,pin){
   try{
-    const r=await fetch(TRACK_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'inscrire',pseudo:P.pseudo,pin:pin||P.pinTmp||'',prenom:P.prenom,nom:P.nom,niveau:P.niveau,classe:P.classe,uid:uid()})});
+    const r=await fetch(TRACK_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'inscrire',pseudo:P.pseudo,pin:pin||P.pinTmp||'',prenom:P.prenom,nom:P.nom,niveau:P.niveau,classe:P.classe,etab:P.etab||'',ecole:P.ecole||'',uid:uid()})});
     return await r.json();
   }catch(e){return null}
 }
@@ -3640,7 +3666,8 @@ setTimeout(retryPseudo,2500);
 /* compte supprimé par le professeur : le téléphone oublie le profil */
 function checkCompte(){const P=DB.profil;if(!trackOn()||!P||!P.pseudo||!navigator.onLine)return;
   const cb='__pdme'+Date.now(),sc=document.createElement('script');
-  window[cb]=d=>{delete window[cb];sc.remove();if(d&&d.ok&&d.supprime&&DB.profil&&DB.profil.pseudo===P.pseudo){DB.queue=(DB.queue||[]).filter(x=>x.pseudo!==P.pseudo);resetPhone('Ce compte a été supprimé par M. Thiam.')}};
+  window[cb]=d=>{delete window[cb];sc.remove();if(d&&d.ok&&d.supprime&&DB.profil&&DB.profil.pseudo===P.pseudo){DB.queue=(DB.queue||[]).filter(x=>x.pseudo!==P.pseudo);resetPhone('Ce compte a été supprimé par M. Thiam.');return}
+    if(d&&d.ok&&d.trouve&&DB.profil&&DB.profil.pseudo===P.pseudo)applySrv(d)};
   sc.onerror=()=>{delete window[cb];sc.remove()};
   sc.src=TRACK_URL+'?action=etat&pseudo='+encodeURIComponent(P.pseudo)+'&callback='+cb;document.body.appendChild(sc)}
 setTimeout(checkCompte,3500);
@@ -3660,7 +3687,7 @@ function loadProf(code,remember){
     if(!d||!d.ok){PR.err=(d&&d.erreur)||"Accès refusé.";try{localStorage.removeItem('pdm_prof_code')}catch(e){}}
     else{const H=d.entetes||COLS;PR.rows=d.lignes.map(l=>{const o={};H.forEach((h,i)=>o[h]=l[i]);o.n20=parseFloat(String(o['Note /20']).replace(',','.'))||0;
       const [dd,mm,yy]=String(o.Date).split('/');o.ts=new Date(+yy,+mm-1,+dd).getTime()||0;return o});
-      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:String(x[4]).toUpperCase().replace(/\s+/g,''),le:x[5],vu:x[6]}));PR.feuille=d.feuille||'';PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
+      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:String(x[4]).toUpperCase().replace(/\s+/g,''),le:x[5],vu:x[6],etab:x[7]||'',ecole:x[8]||''}));PR.feuille=d.feuille||'';PR.me=d.moi||{admin:true,nom:'',classes:[]};PR.devoirs=d.devoirs||[];PR.copies=d.copies||[];PR.profs=d.profs||null;PR.dossier=d.dossier||'';PR.remed=d.remed||[];PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
     done()};
   s.onerror=()=>{clearTimeout(timer);PR.err="Impossible de joindre le serveur de suivi.";done()};
   s.src=TRACK_URL+'?code='+encodeURIComponent(code)+'&callback='+cb;document.body.appendChild(s);
@@ -3684,7 +3711,7 @@ const pillN=v=>v===null?'<span class="pill soon">—</span>':`<span class="pill 
 function profHTML(){
   if(!PR.rows){const c=profCode();
     return `<div class="chap-head"><p class="eyebrow">Espace professeur</p><h1>Suivi des élèves</h1>
-      <p class="small">Résultats de tous les élèves, classe par classe, envoyés automatiquement par l'application.</p></div>
+      <p class="small">Résultats des élèves, classe par classe, envoyés automatiquement par l'application. Chaque professeur de maths a son <b>code personnel</b> (créé par M. Thiam) et ne voit que ses classes.</p></div>
       <section class="card" style="display:flex;flex-direction:column;gap:12px">
       <label class="form full" style="display:flex;flex-direction:column;gap:6px;font-weight:700;color:var(--ink)">Code professeur
         <input id="pr-code" type="password" autocomplete="off" value="${esc(c)}" style="font:inherit;font-size:16px;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--surface2);color:var(--ink)"></label>
@@ -3692,7 +3719,8 @@ function profHTML(){
       ${PR.err?`<p class="err">${esc(PR.err)}</p>`:''}
       <button class="btn gold" data-act="prof-login" ${PR.loading?'disabled':''}>${PR.loading?'Chargement…':'Accéder au suivi'}</button></section>
       <button class="btn ghost" data-act="home">Retour à l'accueil</button>`}
-  const rows=PR.rows,INS=PR.ins||[],classes=[...new Set(rows.map(r=>r.Classe).concat(INS.map(x=>x.c)).filter(Boolean))].sort();
+  if(PR.tab&&PR.tab!=='suivi'){const t=profTabHTML();if(PR.tab!=='suivi')return profNavHTML()+t}
+  const rows=PR.rows,INS=PR.ins||[],classes=[...new Set(rows.map(r=>r.Classe).concat(INS.map(x=>x.c)).concat(PR.me&&!PR.me.admin?PR.me.classes:[]).filter(Boolean))].sort(clsSort);
   const R=PR.cl?rows.filter(r=>r.Classe===PR.cl):rows;
   if(PR.eleve)return profEleveHTML(R.filter(r=>(r.Pseudo?r['Élève']+' · @'+r.Pseudo:r['Élève'])===PR.eleve));
   const isEv=r=>/valuation/.test(r.Type),now=Date.now();
@@ -3708,8 +3736,8 @@ function profHTML(){
   const byC={};evAll.forEach(r=>{(byC[r.Chapitre]=byC[r.Chapitre]||[]).push(r)});
   const chaps=Object.entries(byC).map(([c,l])=>{const best={};l.forEach(r=>{best[r.K]=Math.max(best[r.K]||0,r.n20)});const v=Object.values(best);
     return{c,nb:v.length,m:avg(v),ok:Math.round(v.filter(x=>x>=10).length/v.length*100)}}).sort((a,b)=>a.c.localeCompare(b.c));
-  return `<div class="chap-head"><p class="eyebrow">Espace professeur · ${rows.length} résultats reçus</p><h1>Suivi des élèves</h1></div>
-  <div class="skills">${['',...classes].map(c=>`<button class="skill ${PR.cl===c?'on':''}" data-act="prof-cl" data-c="${esc(c)}">${c||'Toutes les classes'}</button>`).join('')}</div>
+  return profNavHTML()+`<div class="chap-head"><p class="eyebrow">${rows.length} résultats reçus</p><h1>Suivi des élèves</h1></div>
+  <div class="skills">${['',...classes].map(c=>`<button class="skill ${PR.cl===c?'on':''}" data-act="prof-cl" data-c="${esc(c)}">${c?esc(clsLab(c)):'Toutes les classes'}</button>`).join('')}</div>
   <section class="levels" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
     <article class="card center" style="display:flex;flex-direction:column;gap:4px"><p class="eyebrow">Élèves inscrits</p><p class="big">${insC.length}</p></article>
     <article class="card center" style="display:flex;flex-direction:column;gap:4px"><p class="eyebrow">Élèves actifs</p><p class="big">${el.length}</p></article>
@@ -3722,7 +3750,7 @@ function profHTML(){
     ${homo.length?`<p><b>Sans pseudo et sur plusieurs téléphones :</b> ${homo.map(e=>esc(e.n)).join(', ')}. Il peut s'agir de deux élèves différents : demande-leur de choisir un pseudo.</p>`:''}
     ${inact.length?`<p><b>Inactifs depuis 14 jours :</b> ${inact.map(e=>esc(e.n)).join(', ')}</p>`:''}</section>`:''}
   ${(()=>{const now=new Date(),d0=new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7)).getTime(),m0=new Date(now.getFullYear(),now.getMonth(),1).getTime();
-    const pts=(r)=>r.Type==='Quiz'?+r.Note||0:r.Type==='Évaluation du mois'?Math.round((+r.Note||0)*1.5):/valuation/.test(r.Type)?+r.Note||0:0;
+    const pts=(r)=>r.Type==='Quiz'?+r.Note||0:r.Type==='Évaluation du mois'?Math.round((+r.Note||0)*1.5):/valuation/.test(r.Type)?+r.Note||0:r.Type==='Devoir (copie)'?Math.round(r.n20):0;
     const top=(from)=>{const best={};R.filter(r=>r.ts>=from).forEach(r=>{const k=r.K+'|'+r.Code+'|'+r.Type+'|'+r.Date,v=pts(r);if(!best[k]||v>best[k].v)best[k]={K:r.K,c:r.Classe,v}});
       const s={};Object.values(best).forEach(b=>{(s[b.K]=s[b.K]||{K:b.K,c:b.c,p:0}).p+=b.v});return Object.values(s).sort((a,b)=>b.p-a.p).slice(0,5)};
     const tw=top(d0),tm=top(m0);if(!tw.length&&!tm.length)return '';
@@ -3742,7 +3770,7 @@ function profHTML(){
   ${insC.length?`<details class="card" ${PR.del&&String(PR.del).startsWith('i:')?'open':''}><summary style="cursor:pointer;font-weight:700">🗑 Gérer les élèves inscrits${PR.cl?' · '+esc(PR.cl):''} (${insC.length})</summary>
     <p class="small" style="margin:10px 0">Supprimer un élève retire son inscription et ses résultats du suivi (ils sont rangés dans l'onglet <b>Corbeille</b> de votre feuille Google, rien n'est perdu). Son pseudo ne pourra plus envoyer de résultats.</p>
     <div style="display:flex;flex-direction:column;gap:8px">
-    ${insC.slice().sort((a,b)=>(a.c+a.nom+a.prenom).localeCompare(b.c+b.nom+b.prenom)).map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid rgba(128,128,128,.25);padding:6px 0"><div><b>${esc(x.prenom)} ${esc(x.nom)}</b><br><span class="small">@${esc(x.p)} · ${esc(x.c)}</span></div>${delBtnHTML('i:'+x.p,x.prenom+' '+x.nom,x.p,'','')}</div>`).join('')}</div></details>`:''}
+    ${insC.slice().sort((a,b)=>(a.c+a.nom+a.prenom).localeCompare(b.c+b.nom+b.prenom)).map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid rgba(128,128,128,.25);padding:6px 0"><div><b>${esc(x.prenom)} ${esc(x.nom)}</b><br><span class="small">@${esc(x.p)} · ${esc(clsLab(x.c))}${x.ecole?' · '+esc(x.ecole):''}</span></div>${delBtnHTML('i:'+x.p,x.prenom+' '+x.nom,x.p,'','')}</div>`).join('')}</div></details>`:''}
   ${(()=>{const cnt={};R.filter(r=>r.Type!=='Test de positionnement').forEach(r=>{String(r['Compétences à revoir']||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(sk=>{const k=r.Chapitre+'||'+sk;(cnt[k]=cnt[k]||new Set()).add(r.K)})});
     const top=Object.entries(cnt).map(([k,s])=>({ch:k.split('||')[0],sk:k.split('||')[1],n:s.size})).sort((a,b)=>b.n-a.n).slice(0,8);
     return top.length?`<section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">Compétences à retravailler en classe</p>
@@ -3835,9 +3863,9 @@ function rankHTML(){
   const L=all.filter(x=>RK.scope==='classe'?x.c===String(P.classe||'').toUpperCase():RK.scope==='niveau'?x.v===P.niveau:true).sort((a,b)=>b.pts-a.pts||a.n-b.n||a.p.localeCompare(b.p));
   const myIdx=L.findIndex(x=>x.p===me);
   const medal=['🥇','🥈','🥉'];
-  const scopes=[P.classe?['classe','Ma classe ('+P.classe+')']:null,P.niveau?['niveau','Toute la '+P.niveau]:null,['tous','Tout le collège']].filter(Boolean);
+  const scopes=[P.classe?['classe','Ma classe ('+clsLab(P.classe)+')']:null,P.niveau?['niveau','Toute la '+P.niveau]:null,['tous','Tout le collège']].filter(Boolean);
   const row=(x,i)=>`<div class="crow ${x.p===me?'meRow':''}" style="${i<3?'border-left-color:var(--gold)':''}"><span class="no" style="${i<3?'background:var(--gold-soft);color:var(--gold-ink)':''}">${i<3?medal[i]:i+1}</span>
-    <div class="ct"><b>@${esc(x.p)}${x.p===me?' · toi':''}</b><small>${esc(x.c)} · ${x.n} activité${x.n>1?'s':''}</small></div><span class="pill ok" style="font-size:14px">${x.pts} pts</span></div>`;
+    <div class="ct"><b>@${esc(x.p)}${x.p===me?' · toi':''}</b><small>${esc(clsLab(x.c))} · ${x.n} activité${x.n>1?'s':''}</small></div><span class="pill ok" style="font-size:14px">${x.pts} pts</span></div>`;
   return `<div class="chap-head"><p class="eyebrow">Classement Profdemaths 2.0</p><h1>🏆 Les champions ${RK.per==='semaine'?'de la semaine':'du mois'}</h1>
     <p class="small">Seuls les pseudos apparaissent, jamais les noms.${RK.data&&RK.data.maj?' Mis à jour le '+esc(RK.data.maj)+'.':''}</p></div>
   <div class="skills">${[['semaine','Cette semaine'],['mois','Ce mois']].map(([k,l])=>`<button class="skill ${RK.per===k?'on':''}" data-act="rk-per" data-k="${k}">${l}</button>`).join('')}</div>
@@ -3847,7 +3875,7 @@ function rankHTML(){
     :me?`<section class="card"><p class="small">Tu n'es pas encore classé${RK.per==='semaine'?' cette semaine':' ce mois-ci'}. Fais un quiz ou une évaluation pour entrer dans le classement !</p></section>`
     :`<section class="card"><p class="small">Choisis un pseudo dans ton profil pour apparaître dans le classement.</p></section>`}
   <section class="clist">${L.length?L.slice(0,10).map(row).join('')+(myIdx>=10?`<p class="small center">…</p>`+row(L[myIdx],myIdx):''):`<p class="small">Personne n'est encore classé pour cette période. Sois le premier !</p>`}</section>
-  ${bulle('Comment gagner des points ?',`<p>Quiz : jusqu'à <b>10 points</b>. Évaluation de chapitre : jusqu'à <b>20 points</b>. Évaluation du mois : jusqu'à <b>30 points</b>.</p><p>Une seule note compte par chapitre et par jour : <b>la meilleure</b>. Travaille un peu chaque jour : c'est la régularité qui fait gagner !</p>`)}
+  ${bulle('Comment gagner des points ?',`<p>Quiz : jusqu'à <b>10 points</b>. Évaluation de chapitre : jusqu'à <b>20 points</b>. Évaluation du mois : jusqu'à <b>30 points</b>. Copie corrigée (devoir en photo) : jusqu'à <b>20 points</b>.</p><p>Une seule note compte par chapitre et par jour : <b>la meilleure</b>. Travaille un peu chaque jour : c'est la régularité qui fait gagner !</p>`)}
   <div class="row"><button class="btn" data-act="rk-refresh">Actualiser</button><button class="btn ghost" data-act="home">Accueil</button></div>`;
 }
 function rankCardHTML(){
@@ -4116,7 +4144,7 @@ const ORD=['6e','5e','4e','3e'];
 /* un élève voit son niveau et les niveaux d'avant (révisions), jamais les niveaux au-dessus */
 function canNiv(n){const p=DB.profil;return !p||!p.niveau||ORD.indexOf(n)<=ORD.indexOf(p.niveau)}
 function nivLock(n){toast('La '+n+' est réservée aux élèves de '+n+'. Ton niveau : '+DB.profil.niveau+'.')}
-function resetPhone(msg){const q=DB.queue||[];DB={v:1,profil:null,ch:{},queue:q};save();S.view='home';S.editProfil=false;S.askOut=false;S.draft=null;render();window.scrollTo(0,0);if(msg)toast(msg)}
+function resetPhone(msg){const q=DB.queue||[];try{localStorage.removeItem('pdm_devoirs')}catch(e){}if(typeof DV!=='undefined'){DV.list=null;DV.copies={};DV.remed=null;DV.photos={}}S.comp=null;DB={v:1,profil:null,ch:{},queue:q};save();S.view='home';S.editProfil=false;S.askOut=false;S.draft=null;render();window.scrollTo(0,0);if(msg)toast(msg)}
 const prenom=()=>DB.profil?DB.profil.prenom:'';
 const eleve=()=>DB.profil?`${DB.profil.prenom} ${DB.profil.nom.toUpperCase()}${DB.profil.pseudo?' (@'+DB.profil.pseudo+')':''}`:'';
 
@@ -4171,21 +4199,22 @@ function feedbackHTML(q,s){
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function profilForm(why){
   const p=S.draft||DB.profil||{prenom:'',nom:'',classe:'',niveau:S.niv||''};
+  const old=DB.profil,locked=!!(old&&old.etab);
   return `<section class="card" style="display:flex;flex-direction:column;gap:14px">
     <p class="eyebrow">${DB.profil?'Modifier mon profil':'Mon profil'}</p>
     ${why?`<p>${why}</p>`:''}
     <div class="form">
-      <label>Prénom<input id="pf-prenom" autocomplete="given-name" value="${esc(p.prenom)}" placeholder="Ex. : Awa"></label>
-      <label>Nom<input id="pf-nom" autocomplete="family-name" value="${esc(p.nom)}" placeholder="Ex. : Diop"></label>
-      <label>Niveau<select id="pf-niv" ${DB.profil&&DB.profil.niveau?'disabled':''}>${['6e','5e','4e','3e'].map(n=>`<option value="${n}" ${p.niveau===n?'selected':''}>${n} (${LV[n].nom})</option>`).join('')}</select></label>
-      ${DB.profil&&DB.profil.niveau?`<p class="small" style="grid-column:1/-1">Ton niveau ne peut pas être changé ici : demande à M. Thiam.</p>`:''}
+      <label>Prénom<input id="pf-prenom" autocomplete="given-name" value="${esc(p.prenom||'')}" placeholder="Ex. : Awa"></label>
+      <label>Nom<input id="pf-nom" autocomplete="family-name" value="${esc(p.nom||'')}" placeholder="Ex. : Diop"></label>
+      <label class="full">Niveau<select id="pf-niv" ${DB.profil&&DB.profil.niveau?'disabled':''}>${['6e','5e','4e','3e'].map(n=>`<option value="${n}" ${p.niveau===n?'selected':''}>${n} (${LV[n].nom})</option>`).join('')}</select></label>
+      ${locked?`<p class="small full">Établissement : <b>${old.etab==='HK'?'autre établissement'+(old.ecole?' · '+esc(old.ecole):''):ECOLE}</b> · classe <b>${esc(clsLab(old.classe))}</b>. Ton niveau et ta classe ne se changent pas ici : demande à ton professeur.</p>`
+        :(DB.profil&&DB.profil.niveau?`<p class="small full">Ton niveau ne peut pas être changé ici : demande à ton professeur.</p>`:'')+etabPickHTML(p,'pf')}
       <label>Mon pseudo<input id="pf-pseudo" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" value="${esc(p.pseudo||'')}" placeholder="Ex. : awa_maths"></label>
       <label>Mon code secret (4 chiffres)<input id="pf-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••" value="${esc(S.draft&&S.draft.pin||'')}"></label>
-      <label>Classe<select id="pf-classe">${'ABCDEFGH'.split('').map(L=>`<option value="${L}" ${(p.classe||'').toUpperCase().endsWith(L)?'selected':''}>${L}</option>`).join('')}</select></label>
     </div>
     <p class="small">Ton <b>pseudo</b> est unique : personne d'autre ne peut le prendre. Retiens bien ton <b>code secret</b> : il te permet de retrouver ton suivi sur un autre téléphone.</p>
     ${S.err?`<p class="err">${S.err}</p>`:''}${S.busy?`<p class="small"><b>Vérification du pseudo…</b></p>`:''}
-    <p class="small">Ton nom et ta classe apparaissent sur tes fiches de résultats. ${trackOn()?"Tes notes aux quiz et aux évaluations sont aussi envoyées à M. Thiam pour suivre ta progression.":"Ils restent sur ce téléphone."}</p>
+    <p class="small">Ton nom et ta classe apparaissent sur tes fiches de résultats. ${trackOn()?"Tes notes aux quiz et aux évaluations sont aussi envoyées à ton professeur pour suivre ta progression.":"Ils restent sur ce téléphone."}</p>
     <div class="row"><button class="btn gold" data-act="save-profil">Enregistrer</button>${DB.profil?`<button class="btn ghost" data-act="cancel-profil">Annuler</button>`:''}</div>
   </section>`;
 }
@@ -4193,9 +4222,9 @@ function profilForm(why){
 /* ---------- vues ---------- */
 function render(){
   document.getElementById('homebtn').hidden=S.view==='home';
-  document.getElementById('sub').textContent=DB.profil?`${eleve()} · ${DB.profil.classe||DB.profil.niveau}`:'Maths au collège · 6e · 5e · 4e · 3e';
+  document.getElementById('sub').textContent=DB.profil?`${eleve()} · ${clsLab(DB.profil.classe||DB.profil.niveau)}`:'Maths au collège · 6e · 5e · 4e · 3e';
   const app=document.getElementById('app');
-  app.innerHTML=S.view==='home'?homeHTML():S.view==='level'?levelHTML():S.view==='guide'?guideHTML():S.view==='prof'?profHTML():S.view==='rank'?rankHTML():S.view==='posi'?posiHTML():S.view==='defis'?defisHTML():chapHTML();
+  app.innerHTML=S.view==='home'?homeHTML():S.view==='level'?levelHTML():S.view==='guide'?guideHTML():S.view==='prof'?profHTML():S.view==='rank'?rankHTML():S.view==='posi'?posiHTML():S.view==='defis'?defisHTML():S.view==='devoirs'?devoirsHTML():chapHTML();
   const qh=document.getElementById('qrhome');if(qh)makeQR(qh,150);
   document.querySelectorAll('[data-qr]').forEach(e=>makeQR(e,170));
 }
@@ -4212,10 +4241,10 @@ function homeHTML(){
     <div style="margin-top:14px">${bulle('Le mot de M. Thiam',`<p>Choisis ton niveau, puis travaille chaque chapitre dans l'ordre : <b>Cours → S'entraîner → Quiz → Évaluation</b>. Avec <b>7/10 au quiz</b>, l'évaluation se débloque.</p><p>À la fin, envoie-moi ta <b>fiche de résultats</b> par WhatsApp ou en capture d'écran. Les nouveaux chapitres arrivent au fur et à mesure de nos cours.</p>`)}</div>
   </section>
   ${!p||S.editProfil||(trackOn()&&!p.pseudo)?profilForm(!p?'Avant de commencer, présente-toi : ton nom apparaîtra sur tes fiches de résultats.':!p.pseudo?'Nouveau : choisis ton pseudo et ton code secret.':''):`<section class="card row" style="justify-content:space-between">
-    <div><p class="eyebrow">Mon profil</p><p style="margin-top:4px"><b style="color:var(--ink)">${esc(eleve())}</b> · ${esc(p.classe||p.niveau)}</p></div>
+    <div><p class="eyebrow">Mon profil</p><p style="margin-top:4px"><b style="color:var(--ink)">${esc(eleve())}</b> · ${esc(clsLab(p.classe||p.niveau))}${p.etab==='HK'&&p.ecole?' · '+esc(p.ecole):''}</p></div>
     <div class="row" style="gap:8px;flex-wrap:wrap">${S.askOut?`<button class="btn" style="background:#b3261e;color:#fff" data-act="logout-ok">Oui, me déconnecter</button><button class="btn ghost" data-act="logout-no">Annuler</button>`:`<button class="btn ghost" data-act="edit-profil">Modifier</button><button class="btn ghost" data-act="logout">Se déconnecter</button>`}</div></section>
   ${S.askOut?`<section class="card"><p class="small">Ce téléphone oubliera ton profil et ta progression. Tes notes déjà envoyées à M. Thiam sont conservées : pour retrouver ton suivi, reconnecte-toi avec <b>ton pseudo et ton code secret</b>.</p></section>`:''}`}
-  ${installHTML()}${rankCardHTML()}${p&&p.niveau?weakHTML(p.niveau,'Mes points faibles en '+p.niveau):''}
+  ${remedAlertHTML()}${completeCardHTML()}${devoirsCardHTML()}${installHTML()}${rankCardHTML()}${p&&p.niveau?weakHTML(p.niveau,'Mes points faibles en '+p.niveau):''}
   <section class="levels">${['6e','5e','4e','3e'].map(n=>{const s=lvlStats(n);return `<article class="card lvl ${mine===n?'mine':''}" style="--lc:${LV[n].color}">
     ${mine===n?'<span class="badge">Mon niveau</span>':''}
     <h2>${n}<small>${LV[n].nom}</small></h2>
@@ -4298,7 +4327,7 @@ function chapHTML(){
   const c=chapInfo(S.cid),R=REG[S.cid],r=rec(S.cid),unlocked=r.best!==null&&r.best>=SEUIL;
   const tabs=[['cours','Cours'],['train',"S'entraîner"],['quiz','Quiz'],['eval','Évaluation']];
   let body='';
-  if(S.tab==='cours')body=R.cours();
+  if(S.tab==='cours')body=decouvHTML(S.cid)+R.cours();
   else if(S.tab==='train')body=trainHTML(c);
   else if(S.tab==='quiz')body=quizHTML(c);
   else body=evalHTML(c,unlocked);
@@ -4407,12 +4436,423 @@ function reviewHTML(E){
     ${bulle('Correction Profdemaths 2.0',corrHTML(q))}</section>`}).join('');
 }
 
+/* ====================================================================== */
+/*  VERSION 2 · établissement, classes HK, devoirs en photo,               */
+/*  remédiation, listes de classe, comptes professeurs                     */
+/* ====================================================================== */
+const KLET=['A','B','C'];
+const clsLab=c=>{c=String(c||'');return /^[3-6]HK$/.test(c)?c[0]+'e HK':c};
+const STDCL=['6','5','4','3'].flatMap(n=>KLET.concat('HK').map(L=>n+L));
+const clsSort=(a,b)=>{const o=x=>(6-(+String(x)[0]||0))*100+(/HK$/.test(x)?90:String(x).charCodeAt(1)||0);return o(a)-o(b)||String(a).localeCompare(String(b))};
+const fmtN=v=>String(v==null?'':v).replace('.',',');
+const numFr=v=>parseFloat(String(v==null?'':v).replace(',','.'));
+const tsFr=(d,h)=>{const m=String(d||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);if(!m)return 0;const hh=String(h||'').match(/(\d{1,2}):(\d{2})/);
+  return new Date(+m[3],+m[2]-1,+m[1],+(m[4]||(hh&&hh[1])||0),+(m[5]||(hh&&hh[2])||0)).getTime()};
+const isoFromFr=d=>{const m=String(d||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);return m?m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):''};
+const typing=()=>{const e=document.activeElement;return !!(e&&/^(INPUT|TEXTAREA|SELECT)$/.test(e.tagName)&&e.type!=='file')};
+const softRender=()=>{if(!typing())render()};
+Object.assign(PR,{tab:'suivi',imgs:{},copies:[],devoirs:[],profs:null,me:null,remed:[]});
+
+/* appel POST au script Google (réponse JSON) */
+async function api(body,ms){
+  if(!trackOn())return{ok:false,erreur:"Le serveur de suivi n'est pas branché."};
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),ms||30000);
+  try{const r=await fetch(TRACK_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),signal:ctl.signal});return await r.json()}
+  catch(e){return{ok:false,erreur:navigator.onLine===false?"Pas de connexion internet : réessaie quand tu es connecté.":"Le serveur ne répond pas. Vérifie ta connexion puis réessaie."}}
+  finally{clearTimeout(t)}
+}
+/* champs de formulaire liés à F (ils survivent aux réaffichages) */
+const FM={};
+function fval(path,def){const [a,b]=path.split('.');return FM[a]&&FM[a][b]!==undefined&&FM[a][b]!==null?FM[a][b]:(def===undefined?'':def)}
+function onField(e){const t=e.target,p=t&&t.dataset&&t.dataset.f;if(!p)return;const [a,b]=p.split('.');FM[a]=FM[a]||{};
+  if(t.type==='checkbox'){const l=new Set(FM[a][b]||[]);t.checked?l.add(t.value):l.delete(t.value);FM[a][b]=[...l]}else FM[a][b]=t.value;
+  if(e.type==='change'&&t.dataset.rr!==undefined)render()}
+document.addEventListener('input',onField);document.addEventListener('change',onField);
+
+/* photo : redimensionnée et compressée sur le téléphone avant l'envoi */
+function compressImg(file,max,q){max=max||1600;q=q||0.72;
+  return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();
+    im.onload=()=>{let w=im.naturalWidth,h=im.naturalHeight;const k=Math.min(1,max/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
+      const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);URL.revokeObjectURL(u);
+      let d=c.toDataURL('image/jpeg',q);if(d.length>1.8e6)d=c.toDataURL('image/jpeg',0.5);res(d)};
+    im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('image'))};im.src=u})}
+function openZoom(src){const m=document.getElementById('modal');
+  m.innerHTML=`<div class="modal-card wide" role="dialog" aria-modal="true" aria-label="Photo agrandie"><img src="${src}" alt="Photo agrandie" style="width:100%;border-radius:12px;background:#fff"><button class="btn" data-act="close-modal">Fermer</button></div>`;m.hidden=false}
+
+/* ---------------- profil : établissement et classe ---------------- */
+function etabPickHTML(d,pre){const e=d.etab||'';
+  return `<div class="full"><p class="lab">Mon établissement</p><div class="seg">
+    <button type="button" class="segb ${e==='K'?'on':''}" data-act="${pre}-etab" data-v="K">🏫 Élève du ${ECOLE}</button>
+    <button type="button" class="segb ${e==='HK'?'on':''}" data-act="${pre}-etab" data-v="HK">Autre établissement</button></div></div>
+  ${e==='K'?`<label>Ma classe<select id="${pre}-classe">${KLET.map(L=>`<option value="${L}" ${String(d.classe||'').toUpperCase().slice(-1)===L?'selected':''}>${L}</option>`).join('')}</select></label>`:''}
+  ${e==='HK'?`<label>Mon école d'origine<input id="${pre}-ecole" maxlength="80" value="${esc(d.ecole||'')}" placeholder="Ex. : CEM Pikine 3"></label>
+    <p class="small full">Les élèves qui ne sont pas au ${ECOLE} sont réunis dans une classe par niveau : <b>6e HK, 5e HK, 4e HK ou 3e HK</b>.</p>`:''}`}
+function grabDraft(){const g=id=>{const e=document.getElementById(id);return e?e.value:undefined};
+  const d=S.draft||Object.assign({},DB.profil||{prenom:'',nom:'',niveau:S.niv||'6e'});
+  [['prenom','pf-prenom'],['nom','pf-nom'],['niveau','pf-niv'],['pseudo','pf-pseudo'],['pin','pf-pin'],['classe','pf-classe'],['ecole','pf-ecole']].forEach(([k,id])=>{const v=g(id);if(v!==undefined)d[k]=v});
+  S.draft=d;return d}
+function grabComp(){const c=S.comp||(S.comp={etab:'',classe:'',ecole:''});const g=id=>{const e=document.getElementById(id);return e?e.value:undefined};
+  const a=g('cp-classe'),b=g('cp-ecole');if(a!==undefined)c.classe=a;if(b!==undefined)c.ecole=b;return c}
+/* valeurs renvoyées par le serveur : la feuille Google fait foi */
+function applySrv(r,silent){const P=DB.profil;if(!P||!r)return false;let ch=false;
+  if(r.niveau&&ORD.includes(r.niveau)&&r.niveau!==P.niveau){P.niveau=r.niveau;ch=true}
+  if(r.classe&&String(r.classe).toUpperCase()!==P.classe){P.classe=String(r.classe).toUpperCase();ch=true}
+  if(r.etab&&r.etab!==P.etab){P.etab=r.etab;ch=true}
+  if(r.etab&&(r.ecole||'')!==(P.ecole||'')){P.ecole=r.ecole||'';ch=true}
+  if(ch){save();if(!silent)toast('Ta classe : '+clsLab(P.classe));softRender();loadDevoirs(true)}
+  return ch}
+function completeEtab(ch){const P=DB.profil;if(!P||!P.pseudo)return;
+  api({action:'completer',pseudo:P.pseudo,etab:ch.etab,classe:ch.classe,ecole:ch.ecole||''}).then(r=>{if(r&&r.ok)applySrv(r,true)})}
+function completeCardHTML(){const p=DB.profil;if(!p||p.etab||!p.pseudo||p.ok===false||!trackOn()||S.editProfil)return '';
+  const d=S.comp||(S.comp={etab:'',classe:'',ecole:''});
+  return `<section class="card" style="display:flex;flex-direction:column;gap:14px;border-top:6px solid var(--gold)">
+    <p class="eyebrow">Nouveau · complète ton profil</p>
+    <p>Es-tu élève du <b>${ECOLE}</b> ? Classe enregistrée aujourd'hui : <b>${esc(clsLab(p.classe))}</b>.</p>
+    <div class="form">${etabPickHTML(d,'cp')}</div>
+    ${S.cpErr?`<p class="err">${esc(S.cpErr)}</p>`:''}
+    <div class="row"><button class="btn gold" data-act="cp-save" ${S.cpBusy?'disabled':''}>${S.cpBusy?'Enregistrement…':'Valider'}</button></div></section>`}
+
+/* ---------------- devoirs à rendre en photo (élève) ---------------- */
+const DV={list:null,copies:{},remed:null,loading:false,err:'',photos:{},busy:'',repl:{},fig:{},figBusy:'',ph:'',e:{},at:0};
+try{const c=JSON.parse(localStorage.getItem('pdm_devoirs')||'null');if(c&&c.list){DV.list=c.list;DV.copies=c.copies||{};DV.remed=c.remed||null}}catch(e){}
+function loadDevoirs(force){const P=DB.profil;if(!trackOn()||!P||!P.pseudo||!P.classe||DV.loading)return;
+  if(!force&&Date.now()-DV.at<60000)return;
+  DV.loading=true;DV.err='';if(S.view==='devoirs')softRender();
+  const mc=DB.mesCopies||{},k=Object.values(mc).map(x=>x.id+'.'+x.cle).join(',');
+  const cb='__pdmv'+Date.now(),s=document.createElement('script');
+  const done=()=>{DV.loading=false;delete window[cb];s.remove();if(S.view==='devoirs'||S.view==='home')softRender()};
+  const timer=setTimeout(()=>{DV.err="Pas de réponse du serveur : voici les derniers devoirs chargés.";done()},20000);
+  window[cb]=d=>{clearTimeout(timer);DV.at=Date.now();
+    if(d&&d.ok){DV.list=d.devoirs||[];DV.copies={};(d.copies||[]).forEach(c=>DV.copies[c.devoir]=c);DV.remed=d.remed||null;
+      try{localStorage.setItem('pdm_devoirs',JSON.stringify({list:DV.list,copies:DV.copies,remed:DV.remed}))}catch(e){}}
+    else DV.err=(d&&d.erreur)||"Devoirs indisponibles pour le moment.";done()};
+  s.onerror=()=>{clearTimeout(timer);DV.err=navigator.onLine===false?"Pas de connexion : voici les derniers devoirs chargés.":"Impossible de joindre le serveur.";done()};
+  s.src=TRACK_URL+'?action=mesdevoirs&classe='+encodeURIComponent(P.classe)+'&pseudo='+encodeURIComponent(P.pseudo)+'&k='+encodeURIComponent(k)+'&callback='+cb;document.body.appendChild(s)}
+function devoirsCardHTML(){const P=DB.profil;if(!P||!P.pseudo||!trackOn())return '';
+  const L=DV.list||[],todo=L.filter(d=>d.actif&&!DV.copies[d.id]),vus=DB.vusCopies||{},neuf=Object.values(DV.copies).filter(c=>c.statut==='Corrigée'&&!vus[c.id]);
+  if(!L.length)return '';
+  return `<section class="card" style="display:flex;flex-direction:column;gap:8px;border-top:6px solid var(--blue)">
+    <p class="eyebrow">📷 Devoirs à rendre en photo</p>
+    <p><b style="color:var(--ink)">${todo.length?todo.length+' devoir'+(todo.length>1?'s':'')+' à rendre':'Aucun devoir à rendre'}</b>${neuf.length?` · <span class="notif">${neuf.length}</span> copie${neuf.length>1?'s':''} corrigée${neuf.length>1?'s':''}`:''}</p>
+    <p class="small">Rédige ta réponse sur ton cahier, prends-la en photo et envoie-la : ton professeur la corrige et te met une note.</p>
+    <div class="row"><button class="btn gold" data-act="devoirs">Ouvrir mes devoirs</button></div></section>`}
+function dvCardHTML(d){const c=DV.copies[d.id],ph=DV.photos[d.id]||[],repl=DV.repl[d.id],busy=DV.busy===d.id;
+  const chap=d.chap&&LV[d.niveau]?((LV[d.niveau].chaps.find(x=>x[0]===d.chap)||[])[1]||''):'';
+  let st='';
+  if(c&&c.statut==='Corrigée'){const n=numFr(c.note),s=numFr(c.sur)||d.sur,[,cls]=mentionOf(n/s*20);
+    st=`<div class="row" style="justify-content:space-between"><p><b style="color:var(--ink)">Copie corrigée</b>${c.le?' le '+esc(c.le):''}</p><span class="pill ${cls}" style="font-size:16px">${esc(fmtN(n))} / ${esc(fmtN(s))}</span></div>
+      ${c.com?bulle('Correction de '+esc(c.par||'ton professeur'),`<p style="white-space:pre-wrap">${esc(c.com)}</p>`):''}`}
+  else if(c&&!repl){st=`<p><span class="pill mid">Envoyée</span> le ${esc(c.date)} à ${esc(c.heure)} · en attente de correction.</p>${d.actif?`<div class="row"><button class="btn ghost sm" data-act="dv-repl" data-d="${d.id}">Remplacer ma copie</button></div>`:''}`}
+  else if(!d.actif){st=`<p class="small">Ce devoir est fermé.</p>`}
+  else st=`<div style="display:flex;flex-direction:column;gap:10px">
+    ${ph.length?`<div class="thumbs">${ph.map((u,i)=>`<div class="thumb"><img src="${u}" alt="Photo ${i+1}" data-act="zoom"><button data-act="dv-rm" data-d="${d.id}" data-i="${i}" aria-label="Retirer la photo ${i+1}">✕</button></div>`).join('')}</div>`:''}
+    ${ph.length<4?`<div class="row"><label class="btn filebtn">📷 Prendre une photo<input type="file" accept="image/*" capture="environment" data-dv="${d.id}"></label><label class="btn ghost filebtn">🖼 Galerie<input type="file" accept="image/*" multiple data-dv="${d.id}"></label></div>`:''}
+    ${DV.ph===d.id?'<p class="small"><b>Préparation de la photo…</b></p>':''}
+    ${DV.e[d.id]?`<p class="err">${esc(DV.e[d.id])}</p>`:''}
+    <div class="row">${ph.length?`<button class="btn gold" data-act="dv-send" data-d="${d.id}" ${busy?'disabled':''}>${busy?'Envoi en cours…':'Envoyer ma copie ('+ph.length+' photo'+(ph.length>1?'s':'')+')'}</button>`:''}${repl?`<button class="btn ghost" data-act="dv-repl-no" data-d="${d.id}">Annuler</button>`:''}</div></div>`;
+  return `<section class="card" style="display:flex;flex-direction:column;gap:12px;border-left:6px solid var(--${c&&c.statut==='Corrigée'?'green':c?'gold':'blue'})">
+    <div><p class="eyebrow">${esc(d.niveau)}${chap?' · '+esc(chap):''}${d.par?' · '+esc(d.par):''}</p><h2 style="font-size:19px;margin-top:4px">${esc(d.titre)}</h2>
+    <p class="small">Noté sur ${esc(fmtN(d.sur))}${d.echeance?` · à rendre le <b>${esc(d.echeance)}</b>`:''}</p></div>
+    ${d.enonce?`<div class="enonce">${esc(d.enonce)}</div>`:''}
+    ${d.img?(DV.fig[d.id]?`<img class="copie-img" src="${DV.fig[d.id]}" alt="Figure de l'énoncé" data-act="zoom">`:`<div class="row"><button class="btn ghost sm" data-act="dv-fig" data-d="${d.id}" ${DV.figBusy===d.id?'disabled':''}>${DV.figBusy===d.id?'Chargement…':"🖼 Voir la figure de l'énoncé"}</button></div>`):''}
+    ${st}</section>`}
+function devoirsHTML(){const P=DB.profil;
+  if(!P||!P.pseudo)return `<div class="chap-head"><h1>📷 Mes devoirs</h1></div><section class="card"><p>Crée d'abord ton profil avec ton pseudo.</p></section><button class="btn ghost" data-act="home">Retour à l'accueil</button>`;
+  const L=(DV.list||[]).slice().sort((a,b)=>(b.actif-a.actif)||tsFr(b.cree)-tsFr(a.cree));
+  DB.vusCopies=DB.vusCopies||{};let ch=false;Object.values(DV.copies).forEach(c=>{if(c.statut==='Corrigée'&&!DB.vusCopies[c.id]){DB.vusCopies[c.id]=1;ch=true}});if(ch)save();
+  return `<div class="chap-head"><p class="eyebrow">${esc(clsLab(P.classe))} · devoirs à rendre en photo</p><h1>📷 Mes devoirs</h1>
+    <p class="small">Lis l'énoncé, rédige ta réponse sur papier, puis envoie la photo de ta copie (4 photos au maximum).</p></div>
+  ${DV.err?`<p class="err">${esc(DV.err)}</p>`:''}${DV.loading?'<p class="small"><b>Chargement des devoirs…</b></p>':''}
+  ${L.length?L.map(dvCardHTML).join(''):(DV.list?`<section class="card"><p class="small">Aucun devoir pour ta classe pour le moment.</p></section>`:'')}
+  ${bulle('Bien photographier ta copie',`<p>Pose ta feuille <b>à plat</b>, dans un endroit <b>bien éclairé</b>, et prends <b>une page par photo</b>. Écris ton nom en haut de la feuille et vérifie que tout est lisible avant d'envoyer.</p>`)}
+  <div class="row"><button class="btn" data-act="dv-refresh">Actualiser</button><button class="btn ghost" data-act="home">Retour à l'accueil</button></div>`}
+function dvAct(a,b){const id=b.dataset.d;
+  if(a==='dv-refresh'){loadDevoirs(true);return}
+  if(a==='dv-rm'){(DV.photos[id]||[]).splice(+b.dataset.i,1);render();return}
+  if(a==='dv-repl'){DV.repl[id]=true;DV.photos[id]=[];render();return}
+  if(a==='dv-repl-no'){delete DV.repl[id];DV.photos[id]=[];render();return}
+  if(a==='dv-fig'){DV.figBusy=id;render();api({action:'enonce',id},60000).then(r=>{DV.figBusy='';if(r.ok)DV.fig[id]=r.data;else toast(r.erreur||'Figure indisponible.');render()});return}
+  if(a==='dv-send'){const P=DB.profil,ph=DV.photos[id]||[];if(!ph.length||DV.busy)return;DV.busy=id;DV.e[id]='';render();
+    api({action:'rendre',pseudo:P.pseudo,devoir:id,images:ph,uid:uid()},120000).then(r=>{DV.busy='';
+      if(r.ok){DB.mesCopies=DB.mesCopies||{};DB.mesCopies[id]={id:r.id,cle:r.cle};save();DV.photos[id]=[];delete DV.repl[id];
+        const d=new Date();DV.copies[id]={id:r.id,devoir:id,statut:'À corriger',date:d.toLocaleDateString('fr-FR'),heure:d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})};
+        toast(r.remplacee?'Nouvelle copie envoyée':'Copie envoyée à ton professeur');loadDevoirs(true)}
+      else DV.e[id]=r.erreur||"L'envoi a échoué : réessaie.";render()});return}
+}
+document.addEventListener('change',async e=>{const t=e.target;if(!t||!t.matches)return;
+  if(t.matches('input[type=file][data-dv]')){const id=t.dataset.dv,fs=[...(t.files||[])];if(!fs.length)return;DV.ph=id;DV.e[id]='';render();
+    const arr=DV.photos[id]=DV.photos[id]||[];
+    for(const f of fs){if(arr.length>=4){DV.e[id]='4 photos au maximum.';break}try{arr.push(await compressImg(f))}catch(x){DV.e[id]="Cette image n'a pas pu être lue : reprends la photo."}}
+    DV.ph='';render();return}
+  if(t.matches('input[type=file][data-pdimg]')){const f=(t.files||[])[0];if(!f)return;FM.dv=FM.dv||{};
+    try{FM.dv.img=await compressImg(f,1400,0.75)}catch(x){PR.e3="Cette image n'a pas pu être lue."}render()}
+});
+
+/* ---------------- remédiation : alerte pour l'élève ---------------- */
+function remedInfo(){const P=DB.profil;if(!P||!P.niveau)return null;
+  const loc=typeof POSI!=='undefined'&&POSI[P.niveau]?posiRec(P.niveau):null,srv=DV.remed&&DV.remed.pos;
+  let g=null,score=null,date='';
+  if(loc){g=posiGroupe(loc.score).k;score=loc.score;date=loc.date}
+  else if(srv){g=srv.groupe;score=srv.score;date=srv.date}
+  if(g!==1)return null;
+  return{score,date,cr:DV.remed&&DV.remed.creneau}}
+function remedAlertHTML(){const R=remedInfo();if(!R)return '';const P=DB.profil,cr=R.cr;
+  return `<section class="card" role="alert" style="display:flex;flex-direction:column;gap:10px;border:2px solid var(--red);border-top:8px solid var(--red)">
+    <p class="eyebrow" style="color:var(--red)">⚠️ Remédiation · 2 h chaque semaine</p>
+    <h2 style="font-size:20px;margin:0">${esc(P.prenom)}, tu es dans le groupe de remédiation</h2>
+    <p>Ton test de positionnement${R.score!=null?' ('+R.score+'/25)':''} montre des bases à reprendre. Tu dois suivre <b>2 heures de remédiation chaque semaine</b> avec ton professeur de maths.</p>
+    ${cr&&cr.creneau?`<div class="enonce" style="white-space:normal"><p>📅 <b>${esc(cr.creneau)}</b>${cr.lieu?' · 📍 '+esc(cr.lieu):''}</p>${cr.remarque?`<p class="small" style="margin-top:4px">${esc(cr.remarque)}</p>`:''}</div>`:`<p class="small">Ton professeur va t'indiquer le jour, l'heure et la salle.</p>`}
+    <p class="small">Entre les séances, travaille les chapitres de ton plan de rattrapage : quand tes résultats remontent, tu changes de groupe.</p>
+    ${typeof POSI!=='undefined'&&POSI[P.niveau]?`<div class="row"><button class="btn gold" data-act="posi" data-n="${P.niveau}">Voir mon plan de rattrapage</button></div>`:''}</section>`}
+
+/* ---------------- espace professeur ---------------- */
+function profClasses(){const me=PR.me||{admin:true,classes:[]};if(!me.admin)return me.classes.slice().sort(clsSort);
+  const seen=(PR.rows||[]).map(r=>r.Classe).concat((PR.ins||[]).map(x=>x.c)).filter(c=>/^[3-6](?:[A-H]|HK)$/.test(c));
+  return [...new Set(STDCL.concat(seen))].sort(clsSort)}
+function profNavHTML(){const me=PR.me||{admin:true,nom:'',classes:[]},todo=(PR.copies||[]).filter(c=>c.statut!=='Corrigée').length;
+  const tabs=[['suivi','📊 Suivi'],['listes','👥 Listes et remédiation'],['copies','📷 Copies'+(todo?` <span class="notif">${todo}</span>`:'')],['devoirs','📝 Devoirs']].concat(me.admin?[['profs','🔑 Comptes profs']]:[]);
+  return `<section class="card row" style="justify-content:space-between;gap:8px"><div><p class="eyebrow">Espace professeur</p><p style="margin-top:2px"><b style="color:var(--ink)">${esc(me.nom||'Professeur')}</b> · ${me.admin?'administrateur · toutes les classes':esc((me.classes||[]).map(clsLab).join(', ')||'aucune classe')}</p></div>
+    <button class="btn ghost sm" data-act="prof-logout">Se déconnecter</button></section>
+  <div class="skills noprint">${tabs.map(([k,l])=>`<button class="skill ${(PR.tab||'suivi')===k?'on':''}" data-act="pt-tab" data-t="${k}">${l}</button>`).join('')}</div>`}
+function profTabHTML(){const t=PR.tab;
+  if(t==='listes')return profListesHTML();
+  if(t==='copies')return profCopiesHTML();
+  if(t==='devoirs')return profDevoirsHTML();
+  if(t==='profs'&&PR.me&&PR.me.admin)return profProfsHTML();
+  PR.tab='suivi';return ''}
+
+/* listes de classe + remédiation */
+function posiParEleve(){const by={};(PR.rows||[]).filter(r=>r.Type==='Test de positionnement').forEach(r=>{const p=String(r.Pseudo||'').toLowerCase();if(!p)return;if(!by[p]||r.ts>=by[p].ts)by[p]={ts:r.ts,sc:+String(r.Note).replace(',','.')||0,date:r.Date}});return by}
+function profListesHTML(){
+  const cls=profClasses(),INS=PR.ins||[],withIns=cls.filter(c=>INS.some(x=>x.c===c));
+  let cl=PR.lcl;if(!cl||!cls.includes(cl))cl=PR.lcl=(withIns[0]||cls[0]||'');
+  const pos=posiParEleve(),last={};(PR.rows||[]).forEach(r=>{const p=String(r.Pseudo||'').toLowerCase();if(p&&(!last[p]||r.ts>last[p].ts))last[p]={ts:r.ts,d:r.Date}});
+  const L=INS.filter(x=>x.c===cl).sort((a,b)=>(a.nom+' '+a.prenom).localeCompare(b.nom+' '+b.prenom,'fr'));
+  const grp=x=>{const p=pos[x.p];return p?posiGroupe(p.sc):null};
+  const remL=L.filter(x=>{const g=grp(x);return g&&g.k===1}),sans=L.filter(x=>!pos[x.p]).length,hk=/HK$/.test(cl);
+  const cr=(PR.remed||[]).find(r=>r.classe===cl)||{};
+  if(!FM.rm||FM.rm.cl!==cl)FM.rm={cl,creneau:cr.creneau||'',lieu:cr.lieu||'',remarque:cr.remarque||''};
+  return `<div class="chap-head"><h1>Listes des élèves</h1><p class="small">Élèves inscrits dans l'application, classe par classe, avec leur groupe au test de positionnement.</p></div>
+  <div class="skills noprint">${cls.map(c=>{const n=INS.filter(x=>x.c===c).length;return `<button class="skill ${cl===c?'on':''}" data-act="pl-cl" data-c="${c}">${esc(clsLab(c))}${n?' · '+n:''}</button>`}).join('')}</div>
+  <section class="card printzone" style="display:flex;flex-direction:column;gap:10px">
+    <p class="eyebrow">${esc(ECOLE)} · Mathématiques · 2026-2027</p>
+    <h2 style="margin:0">Classe ${esc(clsLab(cl))} · ${L.length} élève${L.length>1?'s':''}</h2>
+    <p class="small">${remL.length} en remédiation · ${sans} sans test de positionnement${hk?' · élèves venant d\'autres établissements':''}</p>
+    ${L.length?`<div class="tablewrap"><table class="bilan"><tr><th>N°</th><th>Nom</th><th>Prénom</th><th>Pseudo</th>${hk?'<th>École d\'origine</th>':''}<th>Groupe</th><th>Dernière activité</th></tr>
+    ${L.map((x,i)=>{const g=grp(x),p=pos[x.p];return `<tr><td>${i+1}</td><td><b>${esc(x.nom)}</b></td><td>${esc(x.prenom)}</td><td>@${esc(x.p)}</td>${hk?`<td>${esc(x.ecole||'—')}</td>`:''}<td>${g?`<span class="pill ${g.c}">${g.k} · ${g.nom}</span> <span class="small">${p.sc}/25</span>`:'<span class="pill soon">Pas de test</span>'}</td><td class="small">${esc(last[x.p]?last[x.p].d:x.vu||'—')}</td></tr>`}).join('')}</table></div>`:'<p class="small">Aucun élève inscrit dans cette classe pour le moment.</p>'}
+  </section>
+  <div class="row noprint"><button class="btn" data-act="pl-print">🖨 Imprimer la liste</button><button class="btn ghost" data-act="pl-copy">Copier (pour Excel / Sheets)</button></div>
+  <section class="card noprint" style="display:flex;flex-direction:column;gap:12px;border-top:6px solid var(--red)">
+    <p class="eyebrow" style="color:var(--red)">Remédiation · ${esc(clsLab(cl))} · 2 h par semaine</p>
+    <p class="small">Les élèves du groupe 1 (test de positionnement &lt; 13/25) voient une alerte sur l'accueil de leur application avec ce créneau.</p>
+    ${remL.length?`<p><b>${remL.length} élève${remL.length>1?'s':''} concerné${remL.length>1?'s':''} :</b> ${remL.map(x=>esc(x.prenom+' '+x.nom)).join(', ')}</p>`:'<p class="small">Aucun élève de cette classe en remédiation pour le moment.</p>'}
+    <div class="form"><label>Jour et heure<input data-f="rm.creneau" maxlength="80" value="${esc(fval('rm.creneau'))}" placeholder="Ex. : Mercredi 15 h - 17 h"></label>
+      <label>Lieu<input data-f="rm.lieu" maxlength="60" value="${esc(fval('rm.lieu'))}" placeholder="Ex. : Salle 12"></label>
+      <label class="full">Message aux élèves (facultatif)<input data-f="rm.remarque" maxlength="200" value="${esc(fval('rm.remarque'))}" placeholder="Ex. : Apportez votre cahier d'exercices."></label></div>
+    ${PR.e5?`<p class="err">${esc(PR.e5)}</p>`:''}
+    <div class="row"><button class="btn gold" data-act="pl-remed" ${PR.busy5?'disabled':''}>${PR.busy5?'Enregistrement…':'Enregistrer le créneau'}</button>${cr.le?`<span class="small">Modifié le ${esc(cr.le)}${cr.par?' par '+esc(cr.par):''}</span>`:''}</div></section>`}
+
+/* copies */
+function loadImgs(id){PR.imgBusy=id;PR.imgErr='';api({action:'prof',code:PR.code,op:'images',id},90000).then(r=>{PR.imgBusy='';if(r.ok)PR.imgs[id]=r.images;else PR.imgErr=r.erreur||'Photos indisponibles.';if(S.view==='prof')softRender()})}
+function profCopiesHTML(){const C=PR.copies||[];
+  if(PR.copie){const c=C.find(x=>x.id===PR.copie);if(c)return profCopieHTML(c);PR.copie=null}
+  const f=PR.cf||'todo',dv=fval('pcf.dv'),cl=PR.ccl||'';
+  const L=C.filter(c=>(f==='all'||(f==='todo'?c.statut!=='Corrigée':c.statut==='Corrigée'))&&(!dv||c.devoir===dv)&&(!cl||c.classe===cl)).sort((a,b)=>tsFr(b.date,b.heure)-tsFr(a.date,a.heure));
+  const dvs=PR.devoirs||[],clss=[...new Set(C.map(c=>c.classe))].sort(clsSort);
+  return `<div class="chap-head"><h1>Copies des élèves</h1><p class="small">Les photos envoyées pour les devoirs à rendre${PR.dossier?` · rangées dans <a href="${esc(PR.dossier)}" target="_blank" rel="noopener">votre Google Drive</a>`:''}.</p></div>
+  <div class="skills">${[['todo','À corriger'],['done','Corrigées'],['all','Toutes']].map(([k,l])=>`<button class="skill ${f===k?'on':''}" data-act="pc-f" data-k="${k}">${l}</button>`).join('')}</div>
+  ${clss.length>1?`<div class="skills">${['',...clss].map(c=>`<button class="skill ${cl===c?'on':''}" data-act="pc-cl" data-c="${c}">${c?esc(clsLab(c)):'Toutes les classes'}</button>`).join('')}</div>`:''}
+  ${dvs.length?`<div class="form"><label class="full">Devoir<select data-f="pcf.dv" data-rr><option value="">Tous les devoirs</option>${dvs.map(d=>`<option value="${esc(d.id)}" ${dv===d.id?'selected':''}>${esc(d.titre)} · ${esc(d.classes.map(clsLab).join(', '))}</option>`).join('')}</select></label></div>`:''}
+  <section class="clist">${L.length?L.map(c=>`<div class="crow" style="border-left-color:var(--${c.statut==='Corrigée'?'green':'gold'})"><div class="ct"><b>${esc(c.eleve)}</b><small>${esc(clsLab(c.classe))} · ${esc(c.titre)} · ${esc(c.date)} ${esc(c.heure)} · ${c.nb} photo${c.nb>1?'s':''}${c.statut==='Corrigée'?' · <b>'+esc(fmtN(c.note))+'/'+esc(fmtN(c.sur))+'</b>':''}</small></div>
+    <button class="btn ${c.statut==='Corrigée'?'ghost':'gold'}" data-act="pc-open" data-id="${esc(c.id)}">${c.statut==='Corrigée'?'Revoir':'Corriger'}</button></div>`).join(''):`<p class="small">${f==='todo'?'Aucune copie à corriger. 👍':'Aucune copie.'}</p>`}</section>`}
+function profCopieHTML(c){const d=(PR.devoirs||[]).find(x=>x.id===c.devoir),imgs=PR.imgs[c.id];
+  return `<button class="btn ghost sm" data-act="pc-back" style="align-self:flex-start">‹ Retour aux copies</button>
+  <div class="chap-head"><p class="eyebrow">${esc(clsLab(c.classe))} · rendue le ${esc(c.date)} à ${esc(c.heure)}</p><h1>${esc(c.eleve)}</h1><p class="small">@${esc(c.pseudo)} · ${esc(c.titre)}</p></div>
+  ${d&&d.enonce?`<details class="card"><summary style="cursor:pointer;font-weight:700">Énoncé du devoir</summary><div class="enonce" style="margin-top:10px">${esc(d.enonce)}</div></details>`:''}
+  <section class="card" style="display:flex;flex-direction:column;gap:10px"><p class="eyebrow">Copie · ${c.nb} photo${c.nb>1?'s':''}</p>
+    ${imgs?imgs.map((u,i)=>u?`<img class="copie-img" src="${u}" alt="Page ${i+1} de la copie" data-act="zoom">`:`<p class="err">Photo ${i+1} introuvable dans Google Drive.</p>`).join('')+'<p class="small">Touchez une photo pour l\'agrandir.</p>'
+      :PR.imgErr?`<p class="err">${esc(PR.imgErr)}</p><div class="row"><button class="btn sm" data-act="pc-reimg" data-id="${esc(c.id)}">Réessayer</button></div>`:'<p class="small"><b>Chargement des photos…</b></p>'}</section>
+  <section class="card" style="display:flex;flex-direction:column;gap:12px"><p class="eyebrow">${c.statut==='Corrigée'?'Correction · modifiable':'Corriger la copie'}</p>
+    <div class="form"><label>Note<input type="number" inputmode="decimal" step="0.25" min="0" data-f="note.n" value="${esc(fval('note.n'))}"></label>
+      <label>Sur<input type="number" inputmode="decimal" min="1" data-f="note.s" value="${esc(fval('note.s','20'))}"></label>
+      <label class="full">Commentaire pour l'élève<textarea data-f="note.c" maxlength="1500" placeholder="Ce qui est réussi, les erreurs à corriger, un conseil…">${esc(fval('note.c'))}</textarea></label></div>
+    ${PR.e2?`<p class="err">${esc(PR.e2)}</p>`:''}
+    <div class="row"><button class="btn gold" data-act="pc-save" data-id="${esc(c.id)}" ${PR.busy2?'disabled':''}>${PR.busy2?'Enregistrement…':'Enregistrer la correction'}</button></div>
+    <p class="small">L'élève voit sa note et votre commentaire dans « Mes devoirs ». La note entre aussi dans le suivi (type « Devoir (copie) »).</p></section>`}
+
+/* devoirs (prof) */
+function profDevoirsHTML(){
+  const cls=profClasses(),nivs=ORD.filter(n=>cls.some(c=>c[0]===n[0]));
+  const D=FM.dv||(FM.dv={niv:nivs[0]||'6e',classes:[],sur:'20'});
+  if(!nivs.includes(D.niv))D.niv=nivs[0]||'6e';
+  const ncls=cls.filter(c=>c[0]===D.niv[0]),chaps=(LV[D.niv]&&LV[D.niv].chaps)||[];
+  const counts=id=>{const l=(PR.copies||[]).filter(c=>c.devoir===id);return{n:l.length,ok:l.filter(c=>c.statut==='Corrigée').length}};
+  const list=(PR.devoirs||[]).slice().sort((a,b)=>(b.actif-a.actif)||tsFr(b.cree)-tsFr(a.cree));
+  return `<div class="chap-head"><h1>Devoirs à rendre en photo</h1><p class="small">Publiez un exercice : les élèves des classes choisies rédigent sur papier puis envoient la photo de leur copie. Vous corrigez ici.</p></div>
+  <section class="card" style="display:flex;flex-direction:column;gap:12px"><p class="eyebrow">${D.id?'Modifier le devoir':'Nouveau devoir'}</p>
+    <div class="form">
+      <label class="full">Titre<input data-f="dv.titre" maxlength="80" value="${esc(D.titre||'')}" placeholder="Ex. : Exercice 3 · Puissances"></label>
+      <label>Niveau<select data-f="dv.niv" data-rr>${nivs.map(n=>`<option value="${n}" ${D.niv===n?'selected':''}>${n}</option>`).join('')}</select></label>
+      <label>Chapitre (facultatif)<select data-f="dv.chap"><option value="">—</option>${chaps.map(c=>`<option value="${c[0]}" ${D.chap===c[0]?'selected':''}>${esc(c[1])}</option>`).join('')}</select></label></div>
+    <div><p class="lab">Classes</p><div class="cgrid">${ncls.map(c=>`<label><input type="checkbox" data-f="dv.classes" value="${c}" ${(D.classes||[]).includes(c)?'checked':''}> ${esc(clsLab(c))}</label>`).join('')||'<p class="small">Aucune classe de ce niveau.</p>'}</div></div>
+    <div class="form">
+      <label class="full">Énoncé<textarea data-f="dv.enonce" maxlength="4000" placeholder="Écrivez l'énoncé de l'exercice…">${esc(D.enonce||'')}</textarea></label>
+      <label>Noté sur<input type="number" min="1" data-f="dv.sur" value="${esc(D.sur||'20')}"></label>
+      <label>À rendre le (facultatif)<input type="date" data-f="dv.ech" value="${esc(D.ech||'')}"></label></div>
+    <div class="row">${D.img?`<div class="thumb" style="width:110px"><img src="${D.img}" alt="Figure de l'énoncé"><button data-act="pd-noimg" aria-label="Retirer la figure">✕</button></div>`:D.oldImg?'<p class="small">Une figure est déjà jointe à ce devoir.</p>':''}
+      <label class="btn ghost filebtn">🖼 ${D.img||D.oldImg?'Changer la':'Ajouter une'} figure (photo de l'énoncé)<input type="file" accept="image/*" data-pdimg="1"></label></div>
+    ${PR.e3?`<p class="err">${esc(PR.e3)}</p>`:''}
+    <div class="row"><button class="btn gold" data-act="pd-save" ${PR.busy3?'disabled':''}>${PR.busy3?'Publication…':D.id?'Enregistrer les modifications':'Publier le devoir'}</button>${D.id?'<button class="btn ghost" data-act="pd-new">Annuler</button>':''}</div></section>
+  <section class="clist">${list.length?list.map(d=>{const k=counts(d.id);return `<div class="crow" style="border-left-color:var(--${d.actif?'green':'line'})"><div class="ct"><b>${esc(d.titre)}</b><small>${esc(d.classes.map(clsLab).join(', '))}${d.echeance?' · à rendre le '+esc(d.echeance):''} · ${k.n} copie${k.n>1?'s':''} · ${k.ok} corrigée${k.ok>1?'s':''}${d.actif?'':' · <b>fermé</b>'}${PR.me&&PR.me.admin&&d.par?' · '+esc(d.par):''}</small></div>
+    <div class="row" style="gap:6px"><button class="btn sm" data-act="pd-copies" data-id="${esc(d.id)}">Copies</button><button class="btn ghost sm" data-act="pd-edit" data-id="${esc(d.id)}">Modifier</button><button class="btn ghost sm" data-act="pd-etat" data-id="${esc(d.id)}" data-v="${d.actif?0:1}">${d.actif?'Fermer':'Rouvrir'}</button></div></div>`}).join(''):'<p class="small">Aucun devoir publié pour le moment.</p>'}</section>`}
+
+/* comptes des professeurs (administrateur) */
+function msgProf(p){return `Bonjour ${p.nom}, voici ton code pour l'Espace professeur de Profdemaths 2.0 : ${p.code}\nOuvre ${APP_URL} , descends tout en bas, touche « Espace professeur » et entre ce code.\nTes classes : ${(p.classes||[]).map(clsLab).join(', ')}.`}
+function profProfsHTML(){
+  const P=PR.profs||[],cls=profClasses(),N=FM.pp||(FM.pp={nom:'',classes:[]});
+  return `<div class="chap-head"><h1>Comptes des professeurs</h1><p class="small">Chaque professeur de maths se connecte avec son propre code et ne voit que les classes cochées. Votre code administrateur ne change pas.</p></div>
+  ${PR.newCode?`<section class="card" style="display:flex;flex-direction:column;gap:10px;border-top:6px solid var(--green)"><p class="eyebrow">Compte créé</p>
+    <p>Code de <b>${esc(PR.newCode.nom)}</b> : <b style="font-size:22px;color:var(--ink);letter-spacing:1px">${esc(PR.newCode.code)}</b></p>
+    <div class="row"><button class="btn sm" data-act="pp-copy" data-c="${esc(PR.newCode.code)}">Copier le code</button><a class="btn wa sm" target="_blank" rel="noopener" href="${wa(msgProf(PR.newCode))}">Envoyer par WhatsApp</a><button class="btn ghost sm" data-act="pp-ok">Fermer</button></div></section>`:''}
+  <section class="card" style="display:flex;flex-direction:column;gap:12px"><p class="eyebrow">${N.cible?'Modifier le compte':'Nouveau professeur'}</p>
+    <div class="form"><label class="full">Nom du professeur<input data-f="pp.nom" maxlength="60" value="${esc(N.nom||'')}" placeholder="Ex. : M. Faye"></label></div>
+    <div><p class="lab">Ses classes</p><div class="cgrid">${cls.map(c=>`<label><input type="checkbox" data-f="pp.classes" value="${c}" ${(N.classes||[]).includes(c)?'checked':''}> ${esc(clsLab(c))}</label>`).join('')}</div></div>
+    ${PR.e4?`<p class="err">${esc(PR.e4)}</p>`:''}
+    <div class="row"><button class="btn gold" data-act="pp-save" ${PR.busy4?'disabled':''}>${PR.busy4?'Enregistrement…':N.cible?'Enregistrer':'Créer le compte'}</button>${N.cible?'<button class="btn ghost" data-act="pp-new">Annuler</button>':''}</div></section>
+  <section class="clist">${P.length?P.map(p=>`<div class="crow" style="border-left-color:var(--${p.actif?'green':'line'})"><div class="ct"><b>${esc(p.nom)}</b><small>Code : <b>${esc(p.code)}</b> · ${esc(p.classes.map(clsLab).join(', '))}${p.actif?'':' · <b>désactivé</b>'}${p.vu?' · vu le '+esc(p.vu):''}</small></div>
+    <div class="row" style="gap:6px"><a class="btn wa sm" target="_blank" rel="noopener" href="${wa(msgProf(p))}">WhatsApp</a><button class="btn ghost sm" data-act="pp-edit" data-c="${esc(p.code)}">Modifier</button><button class="btn ghost sm" data-act="pp-act" data-c="${esc(p.code)}">${p.actif?'Désactiver':'Activer'}</button>${PR.ppDel===p.code?`<button class="btn sm" style="background:#b3261e;color:#fff" data-act="pp-del-ok" data-c="${esc(p.code)}">Supprimer</button><button class="btn ghost sm" data-act="pp-del-no">Annuler</button>`:`<button class="btn ghost sm" data-act="pp-del" data-c="${esc(p.code)}" aria-label="Supprimer">🗑</button>`}</div></div>`).join(''):'<p class="small">Aucun compte professeur pour le moment.</p>'}</section>`}
+
+/* actions de la version 2 */
+function profOp(o,ms){return api(Object.assign({action:'prof',code:PR.code},o),ms)}
+function v2Act(a,b){
+  if(a==='zoom'){openZoom(b.getAttribute('src'));return}
+  if(a==='pf-etab'){const d=grabDraft();d.etab=b.dataset.v;S.err='';render();return}
+  if(a==='cp-etab'){grabComp().etab=b.dataset.v;S.cpErr='';render();return}
+  if(a==='cp-save'){const c=grabComp(),P=DB.profil;if(S.cpBusy||!P)return;
+    if(c.etab!=='K'&&c.etab!=='HK'){S.cpErr='Choisis ton établissement.';render();return}
+    if(c.etab==='HK'&&String(c.ecole||'').trim().length<2){S.cpErr="Écris le nom de ton école d'origine.";render();return}
+    const d0=P.niveau[0],cl=c.etab==='HK'?d0+'HK':d0+(KLET.includes(String(c.classe||'A').slice(-1))?String(c.classe||'A').slice(-1):'A');
+    S.cpBusy=true;S.cpErr='';render();
+    api({action:'completer',pseudo:P.pseudo,etab:c.etab,classe:cl,ecole:String(c.ecole||'').trim()}).then(r=>{S.cpBusy=false;
+      if(r.ok){applySrv(r,true);S.comp=null;toast('Profil complété · '+clsLab(DB.profil.classe))}else S.cpErr=r.erreur||'Enregistrement impossible.';render()});return}
+  if(a==='devoirs'){S.view='devoirs';render();window.scrollTo(0,0);loadDevoirs(true);return}
+  if(a.startsWith('dv-')){dvAct(a,b);return}
+  /* espace professeur */
+  if(a==='pt-tab'){PR.tab=b.dataset.t;PR.copie=null;PR.e2=PR.e3=PR.e4=PR.e5='';render();window.scrollTo(0,0);return}
+  if(a==='pl-cl'){PR.lcl=b.dataset.c;render();return}
+  if(a==='pl-print'){window.print();return}
+  if(a==='pl-copy'){const cl=PR.lcl,pos=posiParEleve(),L=(PR.ins||[]).filter(x=>x.c===cl).sort((x,y)=>(x.nom+' '+x.prenom).localeCompare(y.nom+' '+y.prenom,'fr'));
+    const t=['N°\tNom\tPrénom\tPseudo\tClasse\tÉcole d\'origine\tGroupe\tTest /25'].concat(L.map((x,i)=>{const p=pos[x.p],g=p?posiGroupe(p.sc):null;return [i+1,x.nom,x.prenom,'@'+x.p,clsLab(x.c),x.ecole||'',g?g.k+' · '+g.nom:'',p?p.sc:''].join('\t')})).join('\n');
+    copyText(t,'Liste copiée : colle-la dans Excel ou Google Sheets');return}
+  if(a==='pl-remed'){const R=FM.rm||{};PR.busy5=true;PR.e5='';render();
+    profOp({op:'remed',classe:R.cl,creneau:R.creneau,lieu:R.lieu,remarque:R.remarque}).then(r=>{PR.busy5=false;if(r.ok){toast('Créneau de remédiation enregistré');loadProf(PR.code,false)}else{PR.e5=r.erreur;render()}});return}
+  if(a==='pc-f'){PR.cf=b.dataset.k;render();return}
+  if(a==='pc-cl'){PR.ccl=b.dataset.c;render();return}
+  if(a==='pc-open'){const c=(PR.copies||[]).find(x=>x.id===b.dataset.id);if(!c)return;PR.copie=c.id;PR.e2='';
+    const d=(PR.devoirs||[]).find(x=>x.id===c.devoir);FM.note={n:c.statut==='Corrigée'?fmtN(c.note).replace(',','.'):'',s:String(c.sur||(d&&d.sur)||20),c:c.com||''};
+    if(!PR.imgs[c.id])loadImgs(c.id);render();window.scrollTo(0,0);return}
+  if(a==='pc-reimg'){loadImgs(b.dataset.id);render();return}
+  if(a==='pc-back'){PR.copie=null;render();return}
+  if(a==='pc-save'){if(PR.busy2)return;const n=fval('note.n'),s=fval('note.s','20');if(n===''){PR.e2='Écrivez la note.';render();return}
+    PR.busy2=true;PR.e2='';render();
+    profOp({op:'noter',id:b.dataset.id,note:n,sur:s,com:fval('note.c')}).then(r=>{PR.busy2=false;if(r.ok){toast('Correction enregistrée');PR.copie=null;FM.note=null;loadProf(PR.code,false)}else{PR.e2=r.erreur;render()}});return}
+  if(a==='pd-new'){FM.dv=null;PR.e3='';render();return}
+  if(a==='pd-noimg'){if(FM.dv)FM.dv.img='';render();return}
+  if(a==='pd-edit'){const d=(PR.devoirs||[]).find(x=>x.id===b.dataset.id);if(!d)return;
+    FM.dv={id:d.id,titre:d.titre,niv:d.niveau,chap:d.chap,classes:d.classes.slice(),enonce:d.enonce,sur:String(d.sur),ech:isoFromFr(d.echeance),oldImg:!!d.image,img:''};PR.e3='';render();window.scrollTo(0,0);return}
+  if(a==='pd-copies'){PR.tab='copies';PR.cf='all';PR.ccl='';FM.pcf={dv:b.dataset.id};PR.copie=null;render();window.scrollTo(0,0);return}
+  if(a==='pd-etat'){profOp({op:'devoirEtat',id:b.dataset.id,actif:b.dataset.v==='1'}).then(r=>{if(r.ok){toast(b.dataset.v==='1'?'Devoir rouvert':'Devoir fermé : les élèves ne peuvent plus rendre');loadProf(PR.code,false)}else toast(r.erreur)});return}
+  if(a==='pd-save'){const D=FM.dv||{};if(PR.busy3)return;PR.busy3=true;PR.e3='';render();
+    profOp({op:'devoir',id:D.id||'',titre:D.titre||'',niveau:D.niv,classes:(D.classes||[]).filter(c=>c[0]===String(D.niv)[0]),chap:D.chap||'',enonce:D.enonce||'',sur:D.sur||20,echeance:D.ech||'',image:D.img||'',garderImage:!!(D.oldImg&&!D.img)},90000)
+      .then(r=>{PR.busy3=false;if(r.ok){toast(D.id?'Devoir modifié':'Devoir publié : les élèves le voient dans « Mes devoirs »');FM.dv=null;loadProf(PR.code,false)}else{PR.e3=r.erreur;render()}});return}
+  if(a==='pp-ok'){PR.newCode=null;render();return}
+  if(a==='pp-copy'){copyText(b.dataset.c,'Code copié');return}
+  if(a==='pp-new'){FM.pp=null;PR.e4='';render();return}
+  if(a==='pp-edit'){const p=(PR.profs||[]).find(x=>x.code===b.dataset.c);if(!p)return;FM.pp={cible:p.code,nom:p.nom,classes:p.classes.slice(),actif:p.actif};PR.e4='';render();window.scrollTo(0,0);return}
+  if(a==='pp-del'){PR.ppDel=b.dataset.c;render();return}
+  if(a==='pp-del-no'){PR.ppDel=null;render();return}
+  if(a==='pp-del-ok'){profOp({op:'profSupprimer',cible:b.dataset.c}).then(r=>{PR.ppDel=null;if(r.ok){toast('Compte supprimé');loadProf(PR.code,false)}else{toast(r.erreur);render()}});return}
+  if(a==='pp-act'){const p=(PR.profs||[]).find(x=>x.code===b.dataset.c);if(!p)return;
+    profOp({op:'profModifier',cible:p.code,nom:p.nom,classes:p.classes,actif:!p.actif}).then(r=>{if(r.ok){toast(p.actif?'Compte désactivé':'Compte activé');loadProf(PR.code,false)}else toast(r.erreur)});return}
+  if(a==='pp-save'){const N=FM.pp||{};if(PR.busy4)return;PR.busy4=true;PR.e4='';render();
+    profOp({op:N.cible?'profModifier':'profCreer',cible:N.cible||'',nom:N.nom||'',classes:N.classes||[],actif:N.actif!==false}).then(r=>{PR.busy4=false;
+      if(r.ok){if(!N.cible)PR.newCode={nom:N.nom,code:r.code,classes:N.classes};toast(N.cible?'Compte modifié':'Compte créé');FM.pp=null;loadProf(PR.code,false)}else{PR.e4=r.erreur;render()}});return}
+}
+setTimeout(()=>loadDevoirs(true),4500);
+
+/* ---------- activités de découverte (contexte sénégalais) : en tête de chaque cours ---------- */
+const DECOUV={
+'6e-DEC':["La balance du boutiquier","Chez le boutiquier du quartier, Moussa achète du riz. La balance électronique affiche <b>2,375 kg</b>. Sur sa fiche de santé, Moussa lit qu'il mesure <b>1,47 m</b>.",["Comment lit-on le nombre 2,375 ? Quelle est sa partie entière ?","Quel est le chiffre des dixièmes ? des millièmes ?","Écris 2,375 sous la forme d'une fraction de dénominateur 1 000."],"2,375 se lit « deux unités et trois cent soixante-quinze millièmes ». Partie entière : 2. Chiffre des dixièmes : 3 ; chiffre des millièmes : 5. 2,375 = 2 375/1 000."],
+'6e-ADD':["Le tissu de la Tabaski","Pour la Tabaski, Aminata achète au marché HLM <b>2,75 m</b> de wax pour sa robe et <b>1,5 m</b> pour son foulard.",["Quelle longueur de tissu a-t-elle achetée en tout ?","Écris les deux nombres l'un sous l'autre : quels chiffres faut-il placer en colonne ?","Pourquoi faut-il aligner les virgules ?"],"2,75 + 1,5 = 4,25 m. On aligne les virgules pour additionner les unités avec les unités, les dixièmes avec les dixièmes, les centièmes avec les centièmes (1,5 = 1,50)."],
+'6e-SOU':["Le saut en longueur","Au tournoi sportif inter-CEM, Ibrahima saute <b>3,8 m</b> en longueur et Ousmane <b>3,65 m</b>. À la maison, la maman de Fatou utilise <b>1,75 L</b> d'huile d'un bidon de <b>5 L</b>.",["Qui a sauté le plus loin ? De combien ?","Combien reste-t-il d'huile dans le bidon ?","Quelle opération as-tu utilisée dans les deux cas ?"],"Ibrahima : 3,80 − 3,65 = 0,15 m de plus. Il reste 5 − 1,75 = 3,25 L. Dans les deux cas : une soustraction (on cherche un écart ou ce qui reste)."],
+'6e-GEO':["La route de Rufisque","Sur un plan simplifié de Pikine, la route nationale est un trait sans fin. Le car rapide s'arrête au point A puis au point B. Le chemin qui part du rond-point R en direction de Rufisque ne s'arrête jamais.",["Le trajet du car entre les deux arrêts : a-t-il un début et une fin ?","Le chemin qui part de R : a-t-il un début ? une fin ?","La route nationale : a-t-elle un début ou une fin ?"],"Entre A et B : début et fin, c'est un segment [AB]. Depuis R : un début mais pas de fin, c'est une demi-droite [Rx). La route sans fin des deux côtés : c'est une droite. Chaque objet a sa notation."],
+'6e-RAN':["La course du 100 m","Au 100 m du CEM, les temps sont : Awa <b>14,8 s</b> ; Khady <b>14,75 s</b> ; Ndèye <b>15,1 s</b> ; Binta <b>14,09 s</b>.",["Qui a gagné la course (le temps le plus petit) ?","Range les quatre temps dans l'ordre croissant.","Khady dit : « 75 est plus grand que 8, donc 14,75 > 14,8 ». A-t-elle raison ?"],"14,09 < 14,75 < 14,8 < 15,1 : Binta a gagné. Khady a tort : on compare chiffre par chiffre à partir des dixièmes : 14,80 et 14,75 → 8 dixièmes > 7 dixièmes, donc 14,8 > 14,75."],
+'6e-CER':["Le puits de la concession","Pour construire un puits rond dans la cour, le maçon plante un piquet P et y attache une corde de <b>1,2 m</b>. Il tend la corde et trace tout autour sur le sol.",["Où se trouvent tous les points tracés par rapport au piquet ?","Quelle figure obtient-il ? Quel est son rayon ?","Quelle est la largeur du puits, d'un bord à l'autre en passant par P ?"],"Tous les points tracés sont à 1,2 m de P : c'est un cercle de centre P et de rayon 1,2 m. Sa largeur est le diamètre : 2 × 1,2 = 2,4 m."],
+'6e-MUL':["Les sachets de bissap","La maman de Fatou vend du bissap glacé en sachets de <b>0,25 L</b>. Elle prépare <b>12</b> sachets. Au marché, elle achète aussi <b>2,5 m</b> de tissu à <b>1 200 F</b> le mètre.",["Quelle quantité de bissap lui faut-il ?","Combien paie-t-elle le tissu ?","Comment multiplier sans se tromper de place pour la virgule ?"],"12 × 0,25 = 3 L. 2,5 × 1 200 = 3 000 F. On multiplie comme des entiers (25 × 12 = 300) puis on place la virgule : autant de chiffres après la virgule qu'il y en a dans les facteurs."],
+'6e-PER':["La fenêtre du menuisier","À Colobane, un menuisier fabrique une fenêtre : deux montants verticaux et une traverse horizontale qui les relie.",["Les deux montants peuvent-ils se rencontrer si on les prolonge ?","Quel angle la traverse fait-elle avec chaque montant ?","Avec quel instrument le menuisier vérifie-t-il cet angle ?"],"Les montants ne se rencontrent jamais : ils sont parallèles. La traverse fait un angle droit avec chacun : elle leur est perpendiculaire. On vérifie avec l'équerre."],
+'6e-DIV':["Les mangues de Ziguinchor","Tonton revient de Ziguinchor avec <b>25 mangues</b> à partager équitablement entre ses <b>4</b> neveux. Au boutiquier, <b>6</b> paquets de biscuits coûtent <b>1 500 F</b>.",["Combien de mangues entières chaque neveu reçoit-il ? Combien en reste-t-il ?","Si on coupe les mangues restantes, quelle part reçoit chacun ? Écris-la avec une fraction puis un décimal.","Quel est le prix d'un paquet de biscuits ?"],"25 = 4 × 6 + 1 : 6 mangues chacun, il en reste 1. En coupant, chacun reçoit 25/4 = 6,25 mangues. Un paquet coûte 1 500 : 6 = 250 F."],
+'6e-SYM':["Le motif du pagne tissé","Un tisserand manjak montre un pagne dont le motif est identique de part et d'autre d'un trait central. Quand on plie le tissu le long de ce trait, les deux moitiés se superposent exactement.",["Comment appelle-t-on le trait central ?","Un losange du motif est à 3 cm à gauche du trait. Où se trouve le losange qui lui correspond ?","Le segment qui relie ces deux losanges : quel angle fait-il avec le trait ?"],"Le trait est l'axe de symétrie. Le losange correspondant est à 3 cm à droite du trait. Le segment qui les relie est perpendiculaire à l'axe et l'axe passe par son milieu : c'est sa médiatrice."],
+'6e-ORG':["Au marché de Thiaroye","Fatou achète <b>3 kg</b> de riz à <b>450 F</b> le kilo et un sachet d'oignons à <b>500 F</b>. Elle écrit : 500 + 3 × 450. Son frère tape sur sa calculatrice (500 + 3) × 450 et trouve 226 350 F !",["Combien Fatou doit-elle vraiment payer ?","Quelle opération faut-il faire en premier dans 500 + 3 × 450 ?","Pourquoi le calcul du frère est-il faux ?"],"3 × 450 = 1 350, puis 500 + 1 350 = 1 850 F. La multiplication est prioritaire sur l'addition. Le frère a ajouté 500 et 3 avant de multiplier : les parenthèses changent le calcul."],
+'6e-ANG':["L'horloge de la gare","Sur l'horloge de la gare de Dakar, à 3 h, les aiguilles forment un angle droit. Le tour complet du cadran mesure 360°.",["Combien de degrés l'aiguille des heures parcourt-elle en 1 heure ?","Quel angle les aiguilles forment-elles à 1 h ? à 2 h ? à 6 h ?","À quelle heure les aiguilles forment-elles un angle de 120° ?"],"360° : 12 = 30° par heure. À 1 h : 30° ; à 2 h : 60° ; à 6 h : 180° (angle plat). 120° = 4 × 30° : à 4 h (ou à 8 h)."],
+'6e-PRO':["Le thiéboudienne du baptême","La recette de Yaye Fatou pour <b>4 personnes</b> : 1 kg de riz et 800 g de poisson. Pour le baptême, elle doit cuisiner pour <b>12 personnes</b>.",["Combien de fois plus de personnes y a-t-il ?","Quelles quantités de riz et de poisson faut-il ?","Le temps de cuisson est-il aussi multiplié par 3 ?"],"12 = 3 × 4 : 3 fois plus. Riz : 3 kg ; poisson : 3 × 800 = 2 400 g = 2,4 kg. Les quantités sont proportionnelles au nombre de personnes, mais pas le temps de cuisson : tout n'est pas proportionnel."],
+'6e-POL':["Les formes du carrefour","Au carrefour, le panneau STOP a <b>8 côtés égaux</b>. Le terrain de basket du CEM a 4 côtés et 4 angles droits. Le fanion de la classe a 3 côtés.",["Combien de côtés a chaque forme ?","Comment s'appelle une figure fermée formée de segments ?","Connais-tu le nom d'une figure à 8 côtés ? à 3 côtés ?"],"8 côtés : octogone (ici régulier) ; 4 côtés avec 4 angles droits : rectangle ; 3 côtés : triangle. Ce sont tous des polygones."],
+'6e-REL':["Le cahier de crédit","Modou a <b>2 000 F</b> sur son compte. Il achète chez le boutiquier pour <b>3 500 F</b> et le boutiquier note la dette dans son cahier. Dans un immeuble du Plateau, l'ascenseur descend au parking, deux étages sous le rez-de-chaussée.",["Combien Modou doit-il au boutiquier après son achat ?","Comment écrire cette dette avec un nombre ?","Comment numéroter les étages du parking si le rez-de-chaussée est l'étage 0 ?"],"2 000 − 3 500 : Modou doit 1 500 F, on note −1 500. Les étages sous le rez-de-chaussée : −1 et −2. Les nombres avec un signe « − » sont des nombres négatifs."],
+'6e-AIR':["Le champ d'arachide","À Kaolack, le champ d'arachide de la famille Ndiaye est un rectangle de <b>60 m</b> sur <b>40 m</b>.",["Combien de carrés de 1 m de côté peut-on placer dans ce champ ?","Quelle est l'aire du champ ? Quel est son périmètre ?","Le père veut entourer le champ d'une clôture : a-t-il besoin de l'aire ou du périmètre ?"],"60 × 40 = 2 400 carrés : l'aire est 2 400 m². Périmètre : 2 × (60 + 40) = 200 m. Pour la clôture, on a besoin du périmètre."],
+'6e-ESP':["La boîte de craies","La boîte de craies du professeur mesure <b>10 cm</b> de long, <b>6 cm</b> de large et <b>4 cm</b> de haut.",["Combien la boîte a-t-elle de faces ? d'arêtes ? de sommets ?","Combien de petits cubes de 1 cm de côté peut-on y ranger ?","Comment s'appelle ce solide ?"],"6 faces, 12 arêtes, 8 sommets. 10 × 6 × 4 = 240 petits cubes : le volume est 240 cm³. C'est un pavé droit."],
+'6e-REP':["Le jeu de dames","Au grand-place du quartier, les anciens jouent aux dames. Pour noter un coup, Pape repère chaque case par une <b>lettre</b> (colonne) et un <b>numéro</b> (ligne), par exemple C4.",["Pourquoi faut-il deux informations pour repérer une case ?","Le pion de Pape est en C4. Il avance d'une case en diagonale vers la droite et vers le haut. Où arrive-t-il ?","Sur une règle graduée, combien de nombres faut-il pour repérer un point ?"],"Sur une surface (plan), il faut deux repères : la colonne et la ligne. C4 → D5. Sur une droite graduée, un seul nombre suffit : l'abscisse."],
+'6e-SPH':["Où est Dakar sur le globe ?","Sur le globe de la classe, Dakar se trouve à environ <b>14,7° Nord</b> et <b>17,4° Ouest</b>. Saint-Louis est à environ 16° Nord et 16,5° Ouest.",["Dakar est-elle au nord ou au sud de l'équateur ?","Dakar est-elle à l'est ou à l'ouest du méridien de Greenwich ?","Quelle ville est la plus au nord : Dakar ou Saint-Louis ?"],"Nord : Dakar est au nord de l'équateur (latitude Nord). Ouest : elle est à l'ouest de Greenwich (longitude Ouest). Saint-Louis (16° N) est plus au nord que Dakar (14,7° N)."],
+'5e-PUI':["La chaîne WhatsApp","Awa apprend la date du Magal et l'envoie à <b>3</b> amies. Chacune l'envoie à 3 autres personnes, qui l'envoient chacune à 3 autres, et ainsi de suite.",["Combien de personnes reçoivent le message à la 2e étape ? à la 3e ? à la 4e ?","Écris le nombre de la 4e étape sous la forme d'un produit.","Comment écrire ce produit en abrégé ?"],"Étape 1 : 3 ; étape 2 : 9 ; étape 3 : 27 ; étape 4 : 3 × 3 × 3 × 3 = 81. On écrit 3⁴ (« 3 puissance 4 ») : 4 facteurs égaux à 3."],
+'5e-SYM':["Le ventilateur de la classe","Le ventilateur du plafond a <b>4 pales</b> identiques. Quand il fait un demi-tour autour de son axe, il retrouve exactement la même position.",["Autour de quel point le ventilateur tourne-t-il ?","Une tache est sur le bout d'une pale. Après un demi-tour, où se trouve-t-elle par rapport au centre ?","Le centre est-il le milieu du segment qui relie les deux positions de la tache ?"],"Il tourne autour du centre O. Après un demi-tour, la tache est à l'opposé, à la même distance de O. O est le milieu du segment : c'est la symétrie centrale de centre O."],
+'5e-MUL':["La journée de salubrité","Pour le « Set Setal » du quartier, le club environnement a <b>24 balais</b> et <b>36 sacs</b>. Il veut former des équipes identiques en utilisant tout le matériel. Le car Ndiaga Ndiaye part toutes les 15 min et le bus toutes les 20 min ; ils partent ensemble à 7 h.",["Peut-on former 6 équipes ? 8 équipes ? Quel est le plus grand nombre d'équipes possible ?","Combien de balais et de sacs aura chaque équipe ?","À quelle heure le car et le bus repartiront-ils ensemble ?"],"6 divise 24 et 36 : oui ; 8 ne divise pas 36 : non. Le plus grand diviseur commun est 12 : 12 équipes de 2 balais et 3 sacs. Le plus petit multiple commun de 15 et 20 est 60 : ils repartent ensemble à 8 h."],
+'5e-ANG':["Le carrefour de Liberté 6","Deux rues droites se croisent au carrefour. Un des quatre angles formés mesure <b>70°</b>.",["Combien mesure l'angle situé juste à côté (le long de la même rue) ?","Combien mesure l'angle situé en face, de l'autre côté du carrefour ?","Que vaut la somme des quatre angles ?"],"L'angle voisin : 180° − 70° = 110° (angles supplémentaires). L'angle d'en face : 70° (opposés par le sommet). Somme : 70 + 110 + 70 + 110 = 360°."],
+'5e-FRA':["Le pain du ndogou","Pendant le Ramadan, pour le ndogou, Maman coupe un pain en <b>4</b> parts égales et Fatou en mange 1. Son frère coupe un autre pain identique en <b>8</b> parts égales et en mange 2.",["Écris avec une fraction la part mangée par chacun.","Qui a mangé le plus de pain ?","Combien de pain ont-ils mangé à eux deux ?"],"Fatou : 1/4 ; son frère : 2/8. Or 2/8 = 1/4 (on simplifie par 2) : ils ont mangé autant. Ensemble : 1/4 + 1/4 = 2/4 = 1/2 pain."],
+'5e-PAR':["La grille de la boutique","À Sandaga, les boutiques ferment avec une grille extensible. Quand on la tire, ses losanges s'allongent mais les barres restent deux à deux parallèles.",["Dans un « carreau » de la grille, combien de paires de côtés parallèles y a-t-il ?","Les côtés opposés ont-ils la même longueur ?","Comment s'appelle un quadrilatère dont les côtés opposés sont parallèles ?"],"Deux paires de côtés parallèles, et les côtés opposés ont la même longueur. C'est un parallélogramme (ici avec 4 côtés égaux : un losange, qui est un parallélogramme particulier)."],
+'5e-DRE':["De Gorée aux Mamelles","Un plongeur explore une épave près de Gorée à <b>12 m</b> sous la mer. Le sommet de la colline des Mamelles est à environ <b>100 m</b> au-dessus de la mer.",["Comment noter l'altitude du plongeur ? celle du sommet ?","Quel est l'écart d'altitude entre le plongeur et le sommet ?","Le plongeur remonte de 5 m : quelle est sa nouvelle altitude ?"],"Plongeur : −12 m ; sommet : +100 m. Écart : 100 − (−12) = 112 m. Après 5 m de remontée : −12 + 5 = −7 m."],
+'5e-TRI':["Les coins du triangle","Aminata découpe un triangle dans du carton, déchire ses trois coins et les place côte à côte, sommet contre sommet. Ibrahima essaie de faire un triangle avec des bâtonnets de 3 cm, 4 cm et 9 cm.",["Quelle figure forment les trois coins mis côte à côte ?","Combien vaut la somme des angles d'un triangle ?","Ibrahima peut-il fermer son triangle ? Pourquoi ?"],"Les trois coins forment un angle plat : la somme des angles d'un triangle est 180°. Ibrahima ne peut pas : 3 + 4 = 7 < 9, le plus grand côté doit être plus petit que la somme des deux autres (inégalité triangulaire)."],
+'5e-PRO':["Les soldes de la Tabaski","Au marché HLM, un boubou coûte <b>15 000 F</b>. Pour la Tabaski, le vendeur annonce une réduction de <b>20 %</b>.",["Que signifie « 20 % » ?","De combien le prix baisse-t-il ? Quel est le nouveau prix ?","Une chemise à 5 000 F a la même réduction : quel est son nouveau prix ?"],"20 % : 20 F de réduction pour 100 F. Baisse : 15 000 × 20/100 = 3 000 F ; nouveau prix : 12 000 F. Chemise : 5 000 − 1 000 = 4 000 F."],
+'5e-QUA':["Le cerf-volant de Yoff","Pendant les vacances, sur la plage de Yoff, Malick fabrique un cerf-volant avec deux baguettes qui se croisent à angle droit. Le terrain de football voisin est un rectangle.",["Comment sont les deux baguettes (les diagonales) du cerf-volant l'une par rapport à l'autre ?","Les diagonales du terrain de football ont-elles la même longueur ?","Cite d'autres quadrilatères que tu connais."],"Les diagonales du cerf-volant sont perpendiculaires. Celles d'un rectangle ont la même longueur et se coupent en leur milieu. Autres quadrilatères : carré, losange, trapèze, parallélogramme."],
+'5e-REP':["Le plan du quartier","Sur le plan du quartier, l'école est au point O. On compte les rues : la boutique est à 3 rues vers l'est et 2 rues vers le nord ; la mosquée est à 2 rues vers l'ouest et 4 rues vers le nord.",["Comment noter la position de la boutique avec deux nombres ?","Et celle de la mosquée, sachant que l'ouest se compte en négatif ?","Où se trouve le point (0 ; −3) ?"],"Boutique : (3 ; 2). Mosquée : (−2 ; 4). Le point (0 ; −3) est 3 rues au sud de l'école. Ces deux nombres sont les coordonnées du point dans un repère."],
+'5e-ESP':["La tente du baptême","Pour un baptême, on monte une tente dont l'avant et l'arrière sont deux triangles identiques reliés par des rectangles de toile. Le triangle de l'avant a une base de <b>4 m</b> et une hauteur de <b>3 m</b> ; la tente est longue de <b>10 m</b>.",["Combien la tente a-t-elle de faces ? Lesquelles sont des triangles ?","Quelle est l'aire du triangle de l'avant ?","Quel volume d'air y a-t-il sous la tente ?"],"5 faces : 2 triangles (les bases) et 3 rectangles. Aire du triangle : 4 × 3 : 2 = 6 m². Volume : 6 × 10 = 60 m³. C'est un prisme droit : volume = aire de la base × hauteur."],
+'4e-RAT':["Le partage de l'huile","Une bouteille de <b>1 L</b> d'huile remplit exactement <b>3</b> verres identiques. Sur sa calculatrice, Awa tape 1 : 3.",["Quelle quantité d'huile y a-t-il dans un verre ? Écris-la avec une fraction.","Qu'affiche la calculatrice ? Peut-on écrire ce nombre exactement avec une virgule ?","Peut-on quand même faire des calculs exacts avec ce nombre ?"],"Un verre contient 1/3 L. La calculatrice affiche 0,333 333 3… : les 3 ne s'arrêtent jamais, on ne peut pas l'écrire exactement en décimal. Avec la fraction 1/3, on calcule exactement : 1/3 est un nombre rationnel."],
+'4e-DIS':["Le forage entre deux villages","La communauté rurale veut creuser un forage <b>à la même distance</b> de deux villages A et B. Le chemin le plus court de A jusqu'à la route nationale est aussi recherché.",["Trouve plusieurs points à égale distance de A et de B. Que remarques-tu ?","Comment s'appelle la droite qui contient tous ces points ?","Quel trajet est le plus court de A à la route ?"],"Tous les points à égale distance de A et B sont sur une même droite : la médiatrice de [AB]. Le chemin le plus court de A à la route est le segment perpendiculaire à la route : c'est la distance d'un point à une droite."],
+'4e-CAL':["Le jardin scolaire","Le jardin scolaire est un rectangle de largeur <b>4 m</b>. Sa longueur n'est pas encore décidée : elle vaudra <b>x + 5</b> mètres.",["Écris l'aire du jardin avec la lettre x.","Montre que cette aire s'écrit aussi 4x + 20.","Vérifie avec x = 10 que les deux écritures donnent le même résultat."],"Aire : 4 × (x + 5) = 4x + 20 (on « développe »). Avec x = 10 : 4 × 15 = 60 et 4 × 10 + 20 = 60. Les deux expressions sont égales pour toutes les valeurs de x."],
+'4e-EQU':["Les fournitures de Moussa","Moussa achète <b>3 cahiers</b> identiques et un stylo à <b>150 F</b>. Il paie <b>1 050 F</b> en tout.",["On appelle x le prix d'un cahier. Écris une égalité qui traduit l'énoncé.","Combien coûtent les 3 cahiers ensemble ?","Quel est le prix d'un cahier ? Vérifie."],"3x + 150 = 1 050. Les 3 cahiers coûtent 1 050 − 150 = 900 F, donc x = 900 : 3 = 300 F. Vérification : 3 × 300 + 150 = 1 050. Tu viens de résoudre une équation."],
+'4e-DMI':["Le fronton du maçon","À Thiès, un maçon construit le fronton triangulaire d'un bâtiment. La base mesure <b>6 m</b>. Il pose une poutre qui relie les <b>milieux</b> des deux côtés inclinés.",["Mesure sur une figure à l'échelle : quelle est la longueur de la poutre ?","Comment est la poutre par rapport à la base ?","Fais un autre triangle : la remarque est-elle encore vraie ?"],"La poutre mesure 3 m, la moitié de la base, et elle est parallèle à la base. C'est vrai dans tout triangle : c'est le théorème de la droite des milieux."],
+'4e-DRT':["Le château d'eau des trois villages","La commune veut construire un château d'eau <b>à la même distance</b> de trois villages A, B et C qui ne sont pas alignés.",["Où sont les points à égale distance de A et de B ? de B et de C ?","Comment trouver le point à égale distance des trois villages ?","Si on trace un cercle de centre ce point qui passe par A, passe-t-il aussi par B et C ?"],"Les points à égale distance de A et B sont sur la médiatrice de [AB] ; de même pour [BC]. Le château d'eau est au point d'intersection des médiatrices. Le cercle de centre ce point passe par A, B et C : c'est le cercle circonscrit au triangle."],
+'4e-INE':["La sortie à Gorée","La classe prépare une sortie à Gorée. Le car coûte <b>30 000 F</b> et le billet de chaloupe <b>1 500 F</b> par élève (tarifs imaginés pour l'exercice). Le budget est de <b>90 000 F</b>.",["Combien coûte la sortie pour 30 élèves ? pour 45 élèves ?","On note x le nombre d'élèves. Écris une condition sur x pour respecter le budget.","Combien d'élèves au maximum peuvent partir ?"],"30 élèves : 75 000 F (oui) ; 45 élèves : 97 500 F (trop). Condition : 30 000 + 1 500x ≤ 90 000, soit 1 500x ≤ 60 000 et x ≤ 40. Au maximum 40 élèves : c'est une inéquation."],
+'4e-TRR':["La corde du maçon","Pour vérifier l'angle droit des fondations d'une maison, un maçon de Thiès mesure <b>3 m</b> sur un mur et <b>4 m</b> sur l'autre, puis la diagonale : <b>5 m</b>.",["Calcule 3², 4² et 5². Que remarques-tu ?","Le maçon trouve une diagonale de 5,2 m : l'angle est-il droit ?","Pourquoi cette méthode marche-t-elle ?"],"9 + 16 = 25 : 3² + 4² = 5². Avec 5,2 m, 5,2² = 27,04 ≠ 25 : l'angle n'est pas droit. Dans un triangle rectangle, le carré de l'hypoténuse est égal à la somme des carrés des deux autres côtés : c'est le théorème de Pythagore (et sa réciproque)."],
+'4e-TRV':["Le TER glisse sur ses rails","Le TER Dakar–Diamniadio avance en ligne droite. Pendant ce temps, chaque passager, chaque siège et chaque fenêtre se déplace exactement de la même façon.",["Tous les points du train se déplacent-ils dans la même direction ? le même sens ? de la même longueur ?","Le train change-t-il de forme ou de taille ?","Comment représenter ce déplacement par une seule flèche ?"],"Oui : même direction, même sens, même longueur. Le train garde sa forme et sa taille. Ce glissement est une translation, représentée par une flèche : un vecteur."],
+'4e-APL':["Le prix du riz","Au marché, le kilo de riz brisé coûte <b>450 F</b>. On note x le nombre de kilos et f(x) le prix à payer.",["Complète : f(1) = …, f(2) = …, f(5) = …","Écris f(x) en fonction de x.","Si on place les points (x ; f(x)) dans un repère, que remarques-tu ?"],"f(1) = 450 ; f(2) = 900 ; f(5) = 2 250. f(x) = 450x : le prix est proportionnel à la quantité. Les points sont alignés sur une droite qui passe par l'origine : f est une application linéaire."],
+'4e-PRJ':["Les enfants au bord de la route","Des enfants marchent sur un terrain. Chacun va tout droit, perpendiculairement, jusqu'au bord d'une route droite. On marque l'endroit où chacun arrive.",["Deux enfants partent de A et B ; leur camarade part du milieu M de [AB]. Où arrive celui qui part de M ?","Si A, B et M sont alignés, les points d'arrivée le sont-ils aussi ?","Comment appelle-t-on le point d'arrivée de chaque enfant ?"],"Celui qui part de M arrive au milieu des points d'arrivée de A et B. Les points d'arrivée sont alignés sur la route. Chaque point d'arrivée est le projeté orthogonal du point de départ sur la droite : la projection conserve les milieux."],
+'4e-STA':["Comment viens-tu au CEM ?","En 4e B, les 40 élèves répondent à la question « Comment viens-tu au CEM ? » : car rapide <b>12</b>, à pied <b>15</b>, moto Jakarta <b>5</b>, bus Dakar Dem Dikk <b>8</b>.",["Quel est le mode de transport le plus fréquent ?","Quelle fraction des élèves vient en car rapide ? Quel pourcentage ?","Comment représenter ces données pour les comparer d'un coup d'œil ?"],"À pied (15 élèves). Car rapide : 12/40 = 30 %. On peut faire un diagramme en bâtons ou un diagramme circulaire. Effectif, fréquence, pourcentage : c'est la statistique."],
+'4e-ROT':["La roue de la charrette","Au village, la roue de la charrette a <b>6 rayons</b> régulièrement espacés. Quand la roue tourne, chaque rayon prend la place du suivant.",["De quel angle la roue doit-elle tourner pour qu'un rayon prenne la place du suivant ?","Si on relie les bouts des 6 rayons, quelle figure obtient-on ?","Cette figure a-t-elle tous ses côtés de la même longueur ?"],"360° : 6 = 60°. En reliant les extrémités, on obtient un hexagone dont tous les côtés et tous les angles sont égaux : un hexagone régulier. La roue « tourne » : c'est une rotation de centre le moyeu."],
+'4e-ESP':["Les arêtes de la salle de classe","La salle de classe a la forme d'un pavé. Observe le bord supérieur du tableau (devant) et le bord du sol au fond de la salle, perpendiculaire au tableau.",["Ces deux droites se coupent-elles ?","Sont-elles parallèles ?","Est-ce possible sur une feuille de papier ?"],"Elles ne se coupent pas et ne sont pas parallèles : elles ne sont pas dans un même plan. Sur une feuille (un plan), deux droites sont soit sécantes, soit parallèles. Dans l'espace, il existe des droites non coplanaires."],
+'3e-RAC':["Le jardin carré de Fatou","Dans la cour du CEM, Fatou veut délimiter un jardin <b>carré</b>. Elle connaît l'aire qu'elle veut : <b>49 m²</b>. Son amie Khady voudrait un jardin carré de <b>50 m²</b>.",["Quelle doit être la longueur du côté du jardin de Fatou ?","Pour Khady, cherche un nombre dont le carré vaut 50. Est-ce un entier ?","Donne une valeur approchée au centième du côté du jardin de Khady."],"7 × 7 = 49 : le côté mesure 7 m, c'est √49. Pour 50, aucun entier ne convient (7² = 49 et 8² = 64). √50 ≈ 7,07 m. La racine carrée d'un nombre positif a est le nombre positif dont le carré vaut a."],
+'3e-THA':["La hauteur du baobab","En fin d'après-midi, Moussa plante un bâton de <b>1,5 m</b> bien droit près d'un baobab. L'ombre du bâton mesure <b>2 m</b> et celle du baobab <b>16 m</b>.",["Combien de fois l'ombre du baobab est-elle plus longue que celle du bâton ?","Quelle est la hauteur du baobab ?","Quelles droites sont parallèles dans cette situation ?"],"16 : 2 = 8. Le baobab est 8 fois plus haut que le bâton : 8 × 1,5 = 12 m. Les rayons du soleil sont parallèles : les longueurs sont proportionnelles, c'est la situation du théorème de Thalès."],
+'3e-EQI':["Le sac de riz de 50 kg","À la rizerie, un sac est accepté s'il pèse <b>50 kg à 0,5 kg près</b>, c'est-à-dire si l'écart entre sa masse m et 50 kg est au plus 0,5 kg.",["Un sac de 49,7 kg est-il accepté ? et un sac de 50,8 kg ?","Entre quelles masses un sac est-il accepté ?","Comment écrire « l'écart entre m et 50 » avec un symbole mathématique ?"],"49,7 : écart 0,3 → accepté ; 50,8 : écart 0,8 → refusé. Accepté si 49,5 ≤ m ≤ 50,5. L'écart s'écrit |m − 50| (valeur absolue) : la condition est |m − 50| ≤ 0,5."],
+'3e-TRG':["La hauteur de l'antenne","Moussa se place à <b>100 m</b> du pied d'une antenne de téléphonie. Avec un rapporteur de fortune, il voit le sommet sous un angle de <b>35°</b> au-dessus de l'horizontale. Sa calculatrice donne tan 35° ≈ 0,70.",["Fais un schéma : quel triangle rectangle apparaît ?","Quel rapport relie l'angle, la hauteur et la distance de 100 m ?","Quelle est la hauteur approximative de l'antenne (sans compter la taille de Moussa) ?"],"Le triangle Moussa – pied – sommet est rectangle au pied. tan 35° = hauteur / 100, donc hauteur ≈ 0,70 × 100 = 70 m. On utilise les relations trigonométriques dans le triangle rectangle."],
+'3e-AIC':["L'arène de lutte","L'arène de lutte est circulaire. Deux portes A et B sont sur le bord. Le lutteur, au centre O, voit les portes sous un angle de <b>80°</b>. Trois spectateurs assis à différents endroits du bord (du même côté) regardent aussi les deux portes.",["Mesure, sur une figure, l'angle sous lequel chaque spectateur voit les deux portes. Que remarques-tu ?","Compare cet angle à l'angle de 80° vu du centre.","Où faut-il s'asseoir pour voir les portes sous un angle de 40° ?"],"Tous les spectateurs du même arc voient les portes sous le même angle : 40°, la moitié de l'angle au centre de 80°. Partout sur cet arc du cercle. C'est la relation entre angle inscrit et angle au centre."],
+'3e-SYS':["La cantine du CEM","À la cantine, Awa paie <b>800 F</b> pour 2 sandwichs et 1 jus. Moussa paie <b>700 F</b> pour 1 sandwich et 2 jus.",["On note s le prix d'un sandwich et j le prix d'un jus. Écris deux égalités.","Essaie s = 300 et j = 200 : les deux égalités sont-elles vraies ?","Pourquoi une seule égalité ne suffit-elle pas pour trouver les prix ?"],"2s + j = 800 et s + 2j = 700. Avec s = 300 et j = 200 : 600 + 200 = 800 et 300 + 400 = 700 : les deux sont vraies. Une seule égalité a une infinité de solutions ; il faut un système de deux équations."],
+'3e-ESP':["Le cornet d'arachides","Le vendeur d'arachides grillées sert ses clients dans des cornets de papier en forme de <b>cône</b>. À côté, il a des gobelets <b>cylindriques</b> de même base et de même hauteur.",["Combien de cornets pleins faut-il, à ton avis, pour remplir un gobelet ?","Fais l'expérience avec du sable ou de l'eau. Que constates-tu ?","Quelle formule en déduis-tu pour le volume du cône ?"],"Il faut 3 cornets pour remplir le gobelet : le volume du cône est le tiers de celui du cylindre de même base et même hauteur : V = (1/3) × aire de la base × hauteur. C'est la même chose pour la pyramide et le prisme."],
+'3e-STA':["Les notes du BFEM blanc","Les 40 élèves de 3e A ont eu leurs notes au BFEM blanc. Le professeur les regroupe : [0 ; 5[ : 4 élèves ; [5 ; 10[ : 14 ; [10 ; 15[ : 16 ; [15 ; 20[ : 6.",["Quelle est la classe la plus représentée ?","Combien d'élèves ont moins de 10 ?","Comment estimer la moyenne de la classe sans connaître chaque note ?"],"La classe modale est [10 ; 15[. 4 + 14 = 18 élèves ont moins de 10. On remplace chaque classe par son centre (2,5 ; 7,5 ; 12,5 ; 17,5) : moyenne ≈ (4 × 2,5 + 14 × 7,5 + 16 × 12,5 + 6 × 17,5) : 40 = 420 : 40 = 10,5."],
+'3e-VEC':["La pirogue sur le fleuve","À Saint-Louis, une pirogue traverse le fleuve Sénégal. Le piroguier pagaie droit vers l'autre rive, mais le courant la pousse vers la mer.",["Représente par une flèche le déplacement dû à la pagaie, puis celui dû au courant.","Où la pirogue arrive-t-elle vraiment ? Représente ce déplacement total.","Comment obtenir la flèche du déplacement total à partir des deux autres ?"],"Le déplacement total s'obtient en mettant les flèches bout à bout : c'est la somme des deux vecteurs (relation de Chasles, règle du parallélogramme). La pirogue arrive plus en aval que le point visé."],
+'3e-INS':["Le budget de la fête","Pour la fête de fin d'année, la classe a <b>20 000 F</b>. Une boisson coûte <b>500 F</b> et un sandwich <b>1 000 F</b>. On note x le nombre de boissons et y le nombre de sandwichs.",["Peut-on acheter 10 boissons et 12 sandwichs ? 20 boissons et 10 sandwichs ?","Écris la condition sur x et y pour respecter le budget.","Comment représenter tous les couples (x ; y) possibles ?"],"10 et 12 : 5 000 + 12 000 = 17 000 ≤ 20 000, oui. 20 et 10 : 10 000 + 10 000 = 20 000, oui (juste). Condition : 500x + 1 000y ≤ 20 000. Les couples possibles forment une région du plan, délimitée par une droite."],
+'3e-REP':["L'arrêt de bus du quartier","Dans un repère, l'école est en A(1 ; 2) et le marché en B(7 ; 10) (unité : 100 m). La mairie veut placer un arrêt de bus au milieu du trajet direct entre les deux.",["Quelles sont les coordonnées du milieu de [AB] ?","Quelle est la distance AB en mètres ?","Comment as-tu calculé cette distance ?"],"Milieu : ((1 + 7)/2 ; (2 + 10)/2) = (4 ; 6). AB = √((7 − 1)² + (10 − 2)²) = √(36 + 64) = √100 = 10 unités, soit 1 000 m. On utilise Pythagore dans le repère."],
+'3e-AFF':["La sono du baptême","Pour un baptême, on loue une sono : <b>10 000 F</b> pour l'installation, plus <b>2 000 F</b> par heure d'utilisation.",["Combien coûte la location pour 3 heures ? pour 5 heures ?","On note x le nombre d'heures. Écris le prix f(x).","Le prix est-il proportionnel au nombre d'heures ? Pourquoi ?"],"3 h : 16 000 F ; 5 h : 20 000 F. f(x) = 2 000x + 10 000. Ce n'est pas proportionnel : pour 0 h on paie déjà 10 000 F. C'est une application affine ; sa représentation est une droite qui ne passe pas par l'origine."],
+'3e-TRA':["Le pliage du tissu","Fatou dessine un motif sur un tissu, le reproduit par symétrie par rapport à une droite d1, puis reproduit le nouveau motif par symétrie par rapport à une droite d2 parallèle à d1, à 5 cm de d1.",["Compare le motif de départ et le motif final : sont-ils orientés de la même façon ?","De quelle distance le motif a-t-il glissé ?","Quelle transformation unique permet de passer directement du premier au dernier motif ?"],"Le motif final a la même orientation que celui de départ : il a simplement glissé de 2 × 5 = 10 cm, perpendiculairement aux droites. La composée de deux symétries d'axes parallèles est une translation."],
+};
+function decouvHTML(cid){const d=DECOUV[cid];if(!d)return '';
+  return `<section class="decouverte"><p class="t">🔎 Activité de découverte</p><h3 style="margin:0;font-family:var(--display);color:var(--ink)">${d[0]}</h3><p>${d[1]}</p>
+    <ol>${d[2].map(q=>`<li>${q}</li>`).join('')}</ol>
+    <details><summary>Piste de réponse (cherche d'abord !)</summary><p style="margin-top:6px">${d[3]}</p></details></section>`}
+
 /* ---------- actions ---------- */
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')e.target.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('modal').hidden=true});
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,cid=S.cid,s=cid?st(cid):null;
+  if(a&&/^(pf-etab|cp-etab|cp-save|devoirs$|zoom$|dv-|pt-|pl-|pc-|pd-|pp-)/.test(a)){v2Act(a,b);return}
   if(a==='posi'){if(DB.profil&&DB.profil.niveau&&DB.profil.niveau!==b.dataset.n){toast('Ton test de positionnement est celui de '+DB.profil.niveau+'.');return}S.view='posi';S.niv=b.dataset.n;PS.review=false;PS.run=null;render();window.scrollTo(0,0);return}
   if(a==='defis'){if(!canNiv(b.dataset.n)){nivLock(b.dataset.n);return}S.view='defis';S.niv=b.dataset.n;render();window.scrollTo(0,0);return}
   if(a&&a.startsWith('df-')){defisAct(a,b);render();return}
@@ -4430,25 +4870,37 @@ document.addEventListener('click',e=>{
   else if(a==='cancel-profil'){S.editProfil=false}
   else if(a==='save-profil'){
     if(S.busy)return;
-    const v=id=>document.getElementById(id).value.trim();
-    const P={prenom:v('pf-prenom'),nom:v('pf-nom'),niveau:v('pf-niv'),classe:v('pf-classe'),pseudo:v('pf-pseudo').toLowerCase()};
-    const pin=v('pf-pin');S.draft=Object.assign({},P,{pin,classe:v('pf-classe')});
+    const D=grabDraft(),old=DB.profil,t=x=>String(x==null?'':x).trim();
+    const P={prenom:t(D.prenom),nom:t(D.nom),niveau:t(D.niveau)||'6e',pseudo:t(D.pseudo).toLowerCase()};
+    const pin=t(D.pin);
     if(!P.prenom||!P.nom){S.err="Écris ton prénom et ton nom.";render();return}
     if(!/^[a-z0-9_.-]{3,20}$/.test(P.pseudo)){S.err="Choisis un pseudo de 3 à 20 caractères : lettres sans accent, chiffres, point, tiret ou _.";render();return}
-    const old=DB.profil;if(old&&old.niveau)P.niveau=old.niveau;
+    if(old&&old.niveau)P.niveau=old.niveau;
     if(!/^\d{4}$/.test(pin)&&!(old&&old.pseudo===P.pseudo&&old.ok)){S.err="Choisis un code secret de 4 chiffres.";render();return}
-    P.classe=P.niveau.replace('e','')+(P.classe||'A');
+    const d0=P.niveau.replace('e','');
+    if(old&&old.etab){P.etab=old.etab;P.ecole=old.ecole||'';P.classe=old.classe}
+    else{
+      if(D.etab!=='K'&&D.etab!=='HK'){S.err="Indique ton établissement : "+ECOLE+" ou autre établissement.";render();return}
+      P.etab=D.etab;
+      if(D.etab==='HK'){P.ecole=t(D.ecole);if(P.ecole.length<2){S.err="Écris le nom de ton école d'origine.";render();return}P.classe=d0+'HK'}
+      else{P.ecole='';const L=String(D.classe||'A').toUpperCase().slice(-1);P.classe=d0+(KLET.includes(L)?L:'A')}
+    }
+    const choix={etab:P.etab,classe:P.classe,ecole:P.ecole};
     const finish=(ok)=>{const first=!old;S.draft=null;P.ok=ok;if(!ok)P.pinTmp=pin;DB.profil=P;save();S.editProfil=false;S.busy=false;S.err='';
       if(typeof POSI!=='undefined'&&POSI[P.niveau]&&!posiRec(P.niveau)&&S.view!=='prof'){S.view='posi';S.niv=P.niveau;PS.run=null}else if(first&&S.view==='home'){S.view='level';S.niv=P.niveau}render();window.scrollTo({top:0,behavior:'smooth'});
-      toast(ok?'Profil enregistré · @'+P.pseudo:'Profil enregistré. Ton pseudo sera vérifié à la prochaine connexion.')};
+      toast(ok?'Profil enregistré · @'+P.pseudo:'Profil enregistré. Ton pseudo sera vérifié à la prochaine connexion.');loadDevoirs(true)};
     if(!trackOn()){finish(true);return}
-    if(old&&old.ok&&old.pseudo===P.pseudo&&!pin){finish(true);registerPseudo(P,null);return}
+    if(old&&old.ok&&old.pseudo===P.pseudo&&!pin){finish(true);registerPseudo(P,null);if(!old.etab&&P.etab)completeEtab(choix);return}
     S.busy=true;S.err='';render();
     registerPseudo(P,pin).then(r=>{
       if(r===null){finish(false);return}
       if(!r.ok){S.busy=false;S.err=r.erreur||"Ce pseudo n'est pas disponible.";render();return}
       if(r.niveau&&ORD.includes(r.niveau)){P.niveau=r.niveau;if(r.classe)P.classe=String(r.classe).toUpperCase()}
-      finish(true)});
+      if(r.etab){P.etab=r.etab;P.ecole=r.ecole||''}
+      const besoin=r.retour&&!r.etab;
+      if(besoin){P.etab='';delete P.etab}
+      finish(true);
+      if(besoin&&choix.etab){const nv=P.niveau[0];completeEtab({etab:choix.etab,ecole:choix.ecole,classe:choix.etab==='HK'?nv+'HK':nv+choix.classe.slice(-1)})}});
     return;
   }
   else if(a==='level'){if(!canNiv(b.dataset.n)){nivLock(b.dataset.n);return}S.view='level';S.niv=b.dataset.n}
@@ -4458,7 +4910,7 @@ document.addEventListener('click',e=>{
   else if(a==='prof-del'){PR.del=b.dataset.k}
   else if(a==='prof-del-no'){PR.del=null}
   else if(a==='prof-del-ok'){if(!PR.delBusy)profDelete(b.dataset.p,b.dataset.e,b.dataset.c);return}
-  else if(a==='prof-logout'){PR.rows=null;PR.code='';PR.eleve=null;try{localStorage.removeItem('pdm_prof_code')}catch(e){}}
+  else if(a==='prof-logout'){PR.rows=null;PR.code='';PR.eleve=null;PR.me=null;PR.tab='suivi';PR.copies=[];PR.devoirs=[];PR.profs=null;PR.imgs={};PR.copie=null;PR.newCode=null;try{localStorage.removeItem('pdm_prof_code')}catch(e){}}
   else if(a==='prof-cl'){PR.cl=b.dataset.c;PR.eleve=null}
   else if(a==='prof-eleve'){PR.eleve=b.dataset.e;window.scrollTo(0,0)}
   else if(a==='prof-back'){PR.eleve=null}
