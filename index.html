@@ -3709,7 +3709,7 @@ const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length*10)/10:null;
 const fmt=v=>v===null?'—':String(v).replace('.',',');
 const pillN=v=>v===null?'<span class="pill soon">—</span>':`<span class="pill ${v>=12?'ok':v>=10?'mid':'ko'}">${fmt(v)}</span>`;
 function profHTML(){
-  if(!PR.rows){const c=profCode();
+  if(!PR.rows){return profAuthHTML();const c=profCode();
     return `<div class="chap-head"><p class="eyebrow">Espace professeur</p><h1>Suivi des élèves</h1>
       <p class="small">Résultats des élèves, classe par classe, envoyés automatiquement par l'application. Chaque professeur de maths a son <b>code personnel</b> (créé par M. Thiam) et ne voit que ses classes.</p></div>
       <section class="card" style="display:flex;flex-direction:column;gap:12px">
@@ -4240,7 +4240,7 @@ function homeHTML(){
     <p class="lead">Tout le programme de 6e, 5e, 4e et 3e : cours rédigés, exercices corrigés pas à pas, quiz et évaluations notées sur 20.</p>
     <div style="margin-top:14px">${bulle('Le mot de M. Thiam',`<p>Choisis ton niveau, puis travaille chaque chapitre dans l'ordre : <b>Cours → S'entraîner → Quiz → Évaluation</b>. Avec <b>7/10 au quiz</b>, l'évaluation se débloque.</p><p>À la fin, envoie-moi ta <b>fiche de résultats</b> par WhatsApp ou en capture d'écran. Les nouveaux chapitres arrivent au fur et à mesure de nos cours.</p>`)}</div>
   </section>
-  ${!p||S.editProfil||(trackOn()&&!p.pseudo)?profilForm(!p?'Avant de commencer, présente-toi : ton nom apparaîtra sur tes fiches de résultats.':!p.pseudo?'Nouveau : choisis ton pseudo et ton code secret.':''):`<section class="card row" style="justify-content:space-between">
+  ${!p&&S.role!=='eleve'?roleCardHTML():!p||S.editProfil||(trackOn()&&!p.pseudo)?profilForm(!p?'Avant de commencer, présente-toi : ton nom apparaîtra sur tes fiches de résultats.':!p.pseudo?'Nouveau : choisis ton pseudo et ton code secret.':''):`<section class="card row" style="justify-content:space-between">
     <div><p class="eyebrow">Mon profil</p><p style="margin-top:4px"><b style="color:var(--ink)">${esc(eleve())}</b> · ${esc(clsLab(p.classe||p.niveau))}${p.etab==='HK'&&p.ecole?' · '+esc(p.ecole):''}</p></div>
     <div class="row" style="gap:8px;flex-wrap:wrap">${S.askOut?`<button class="btn" style="background:#b3261e;color:#fff" data-act="logout-ok">Oui, me déconnecter</button><button class="btn ghost" data-act="logout-no">Annuler</button>`:`<button class="btn ghost" data-act="edit-profil">Modifier</button><button class="btn ghost" data-act="logout">Se déconnecter</button>`}</div></section>
   ${S.askOut?`<section class="card"><p class="small">Ce téléphone oubliera ton profil et ta progression. Tes notes déjà envoyées à M. Thiam sont conservées : pour retrouver ton suivi, reconnecte-toi avec <b>ton pseudo et ton code secret</b>.</p></section>`:''}`}
@@ -4551,7 +4551,7 @@ function dvCardHTML(d){const c=DV.copies[d.id],ph=DV.photos[d.id]||[],repl=DV.re
     ${DV.e[d.id]?`<p class="err">${esc(DV.e[d.id])}</p>`:''}
     <div class="row">${ph.length?`<button class="btn gold" data-act="dv-send" data-d="${d.id}" ${busy?'disabled':''}>${busy?'Envoi en cours…':'Envoyer ma copie ('+ph.length+' photo'+(ph.length>1?'s':'')+')'}</button>`:''}${repl?`<button class="btn ghost" data-act="dv-repl-no" data-d="${d.id}">Annuler</button>`:''}</div></div>`;
   return `<section class="card" style="display:flex;flex-direction:column;gap:12px;border-left:6px solid var(--${c&&c.statut==='Corrigée'?'green':c?'gold':'blue'})">
-    <div><p class="eyebrow">${esc(d.niveau)}${chap?' · '+esc(chap):''}${d.par?' · '+esc(d.par):''}</p><h2 style="font-size:19px;margin-top:4px">${esc(d.titre)}</h2>
+    <div><p class="eyebrow">${esc(d.matiere||'Mathématiques')} · ${esc(d.niveau)}${chap?' · '+esc(chap):''}${d.par?' · '+esc(d.par):''}</p><h2 style="font-size:19px;margin-top:4px">${esc(d.titre)}</h2>
     <p class="small">Noté sur ${esc(fmtN(d.sur))}${d.echeance?` · à rendre le <b>${esc(d.echeance)}</b>`:''}</p></div>
     ${d.enonce?`<div class="enonce">${esc(d.enonce)}</div>`:''}
     ${d.img?(DV.fig[d.id]?`<img class="copie-img" src="${DV.fig[d.id]}" alt="Figure de l'énoncé" data-act="zoom">`:`<div class="row"><button class="btn ghost sm" data-act="dv-fig" data-d="${d.id}" ${DV.figBusy===d.id?'disabled':''}>${DV.figBusy===d.id?'Chargement…':"🖼 Voir la figure de l'énoncé"}</button></div>`):''}
@@ -4610,8 +4610,8 @@ function profClasses(){const me=PR.me||{admin:true,classes:[]};if(!me.admin)retu
   const seen=(PR.rows||[]).map(r=>r.Classe).concat((PR.ins||[]).map(x=>x.c)).filter(c=>/^[3-6](?:[A-H]|HK)$/.test(c));
   return [...new Set(STDCL.concat(seen))].sort(clsSort)}
 function profNavHTML(){const me=PR.me||{admin:true,nom:'',classes:[]},todo=(PR.copies||[]).filter(c=>c.statut!=='Corrigée').length;
-  const tabs=[['suivi','📊 Suivi'],['listes','👥 Listes et remédiation'],['copies','📷 Copies'+(todo?` <span class="notif">${todo}</span>`:'')],['devoirs','📝 Devoirs']].concat(me.admin?[['profs','🔑 Comptes profs']]:[]);
-  return `<section class="card row" style="justify-content:space-between;gap:8px"><div><p class="eyebrow">Espace professeur</p><p style="margin-top:2px"><b style="color:var(--ink)">${esc(me.nom||'Professeur')}</b> · ${me.admin?'administrateur · toutes les classes':esc((me.classes||[]).map(clsLab).join(', ')||'aucune classe')}</p></div>
+  const tabs=[['suivi','📊 Suivi'],['listes','👥 Listes et remédiation'],['copies','📷 Copies'+(todo?` <span class="notif">${todo}</span>`:'')],['devoirs','📝 Devoirs']].concat(me.admin?[['profs','🔑 Comptes profs']]:[['compte','⚙️ Mon compte']]);
+  return `<section class="card row" style="justify-content:space-between;gap:8px"><div><p class="eyebrow">Espace professeur</p><p style="margin-top:2px"><b style="color:var(--ink)">${esc(me.nom||'Professeur')}</b> · ${me.admin?'administrateur · toutes les classes':esc((me.matieres||[]).map(matCourt).join(' + ')+' · '+((me.classes||[]).map(clsLab).join(', ')||'aucune classe'))}</p></div>
     <button class="btn ghost sm" data-act="prof-logout">Se déconnecter</button></section>
   <div class="skills noprint">${tabs.map(([k,l])=>`<button class="skill ${(PR.tab||'suivi')===k?'on':''}" data-act="pt-tab" data-t="${k}">${l}</button>`).join('')}</div>`}
 function profTabHTML(){const t=PR.tab;
@@ -4619,6 +4619,7 @@ function profTabHTML(){const t=PR.tab;
   if(t==='copies')return profCopiesHTML();
   if(t==='devoirs')return profDevoirsHTML();
   if(t==='profs'&&PR.me&&PR.me.admin)return profProfsHTML();
+  if(t==='compte'&&PR.me&&!PR.me.admin)return profCompteHTML();
   PR.tab='suivi';return ''}
 
 /* listes de classe + remédiation */
@@ -4692,6 +4693,7 @@ function profDevoirsHTML(){
   <section class="card" style="display:flex;flex-direction:column;gap:12px"><p class="eyebrow">${D.id?'Modifier le devoir':'Nouveau devoir'}</p>
     <div class="form">
       <label class="full">Titre<input data-f="dv.titre" maxlength="80" value="${esc(D.titre||'')}" placeholder="Ex. : Exercice 3 · Puissances"></label>
+      ${(()=>{const ms=(PR.me&&!PR.me.admin?PR.me.matieres:MATIERES)||['Mathématiques'];if(!D.mat||!ms.includes(D.mat))D.mat=ms[0];return ms.length>1?`<label class="full">Matière<select data-f="dv.mat">${ms.map(m=>`<option ${D.mat===m?'selected':''}>${esc(m)}</option>`).join('')}</select></label>`:''})()}
       <label>Niveau<select data-f="dv.niv" data-rr>${nivs.map(n=>`<option value="${n}" ${D.niv===n?'selected':''}>${n}</option>`).join('')}</select></label>
       <label>Chapitre (facultatif)<select data-f="dv.chap"><option value="">—</option>${chaps.map(c=>`<option value="${c[0]}" ${D.chap===c[0]?'selected':''}>${esc(c[1])}</option>`).join('')}</select></label></div>
     <div><p class="lab">Classes</p><div class="cgrid">${ncls.map(c=>`<label><input type="checkbox" data-f="dv.classes" value="${c}" ${(D.classes||[]).includes(c)?'checked':''}> ${esc(clsLab(c))}</label>`).join('')||'<p class="small">Aucune classe de ce niveau.</p>'}</div></div>
@@ -4703,7 +4705,7 @@ function profDevoirsHTML(){
       <label class="btn ghost filebtn">🖼 ${D.img||D.oldImg?'Changer la':'Ajouter une'} figure (photo de l'énoncé)<input type="file" accept="image/*" data-pdimg="1"></label></div>
     ${PR.e3?`<p class="err">${esc(PR.e3)}</p>`:''}
     <div class="row"><button class="btn gold" data-act="pd-save" ${PR.busy3?'disabled':''}>${PR.busy3?'Publication…':D.id?'Enregistrer les modifications':'Publier le devoir'}</button>${D.id?'<button class="btn ghost" data-act="pd-new">Annuler</button>':''}</div></section>
-  <section class="clist">${list.length?list.map(d=>{const k=counts(d.id);return `<div class="crow" style="border-left-color:var(--${d.actif?'green':'line'})"><div class="ct"><b>${esc(d.titre)}</b><small>${esc(d.classes.map(clsLab).join(', '))}${d.echeance?' · à rendre le '+esc(d.echeance):''} · ${k.n} copie${k.n>1?'s':''} · ${k.ok} corrigée${k.ok>1?'s':''}${d.actif?'':' · <b>fermé</b>'}${PR.me&&PR.me.admin&&d.par?' · '+esc(d.par):''}</small></div>
+  <section class="clist">${list.length?list.map(d=>{const k=counts(d.id);return `<div class="crow" style="border-left-color:var(--${d.actif?'green':'line'})"><div class="ct"><b>${esc(d.titre)}</b><small>${esc(matCourt(d.matiere||'Mathématiques'))} · ${esc(d.classes.map(clsLab).join(', '))}${d.echeance?' · à rendre le '+esc(d.echeance):''} · ${k.n} copie${k.n>1?'s':''} · ${k.ok} corrigée${k.ok>1?'s':''}${d.actif?'':' · <b>fermé</b>'}${PR.me&&PR.me.admin&&d.par?' · '+esc(d.par):''}</small></div>
     <div class="row" style="gap:6px"><button class="btn sm" data-act="pd-copies" data-id="${esc(d.id)}">Copies</button><button class="btn ghost sm" data-act="pd-edit" data-id="${esc(d.id)}">Modifier</button><button class="btn ghost sm" data-act="pd-etat" data-id="${esc(d.id)}" data-v="${d.actif?0:1}">${d.actif?'Fermer':'Rouvrir'}</button></div></div>`}).join(''):'<p class="small">Aucun devoir publié pour le moment.</p>'}</section>`}
 
 /* comptes des professeurs (administrateur) */
@@ -4719,7 +4721,7 @@ function profProfsHTML(){
     <div><p class="lab">Ses classes</p><div class="cgrid">${cls.map(c=>`<label><input type="checkbox" data-f="pp.classes" value="${c}" ${(N.classes||[]).includes(c)?'checked':''}> ${esc(clsLab(c))}</label>`).join('')}</div></div>
     ${PR.e4?`<p class="err">${esc(PR.e4)}</p>`:''}
     <div class="row"><button class="btn gold" data-act="pp-save" ${PR.busy4?'disabled':''}>${PR.busy4?'Enregistrement…':N.cible?'Enregistrer':'Créer le compte'}</button>${N.cible?'<button class="btn ghost" data-act="pp-new">Annuler</button>':''}</div></section>
-  <section class="clist">${P.length?P.map(p=>`<div class="crow" style="border-left-color:var(--${p.actif?'green':'line'})"><div class="ct"><b>${esc(p.nom)}</b><small>Code : <b>${esc(p.code)}</b> · ${esc(p.classes.map(clsLab).join(', '))}${p.actif?'':' · <b>désactivé</b>'}${p.vu?' · vu le '+esc(p.vu):''}</small></div>
+  <section class="clist">${P.length?P.map(p=>`<div class="crow" style="border-left-color:var(--${p.actif?'green':'line'})"><div class="ct"><b>${esc(p.nom)}</b><small>${p.pseudo?'@'+esc(p.pseudo)+' · ':''}${esc((p.matieres||[]).map(matCourt).join(' + '))} · Code : <b>${esc(p.code)}</b> · ${esc(p.classes.map(clsLab).join(', '))}${p.actif?'':' · <b>désactivé</b>'}${p.vu?' · vu le '+esc(p.vu):''}</small></div>
     <div class="row" style="gap:6px"><a class="btn wa sm" target="_blank" rel="noopener" href="${wa(msgProf(p))}">WhatsApp</a><button class="btn ghost sm" data-act="pp-edit" data-c="${esc(p.code)}">Modifier</button><button class="btn ghost sm" data-act="pp-act" data-c="${esc(p.code)}">${p.actif?'Désactiver':'Activer'}</button>${PR.ppDel===p.code?`<button class="btn sm" style="background:#b3261e;color:#fff" data-act="pp-del-ok" data-c="${esc(p.code)}">Supprimer</button><button class="btn ghost sm" data-act="pp-del-no">Annuler</button>`:`<button class="btn ghost sm" data-act="pp-del" data-c="${esc(p.code)}" aria-label="Supprimer">🗑</button>`}</div></div>`).join(''):'<p class="small">Aucun compte professeur pour le moment.</p>'}</section>`}
 
 /* actions de la version 2 */
@@ -4759,11 +4761,11 @@ function v2Act(a,b){
   if(a==='pd-new'){FM.dv=null;PR.e3='';render();return}
   if(a==='pd-noimg'){if(FM.dv)FM.dv.img='';render();return}
   if(a==='pd-edit'){const d=(PR.devoirs||[]).find(x=>x.id===b.dataset.id);if(!d)return;
-    FM.dv={id:d.id,titre:d.titre,niv:d.niveau,chap:d.chap,classes:d.classes.slice(),enonce:d.enonce,sur:String(d.sur),ech:isoFromFr(d.echeance),oldImg:!!d.image,img:''};PR.e3='';render();window.scrollTo(0,0);return}
+    FM.dv={id:d.id,mat:d.matiere,titre:d.titre,niv:d.niveau,chap:d.chap,classes:d.classes.slice(),enonce:d.enonce,sur:String(d.sur),ech:isoFromFr(d.echeance),oldImg:!!d.image,img:''};PR.e3='';render();window.scrollTo(0,0);return}
   if(a==='pd-copies'){PR.tab='copies';PR.cf='all';PR.ccl='';FM.pcf={dv:b.dataset.id};PR.copie=null;render();window.scrollTo(0,0);return}
   if(a==='pd-etat'){profOp({op:'devoirEtat',id:b.dataset.id,actif:b.dataset.v==='1'}).then(r=>{if(r.ok){toast(b.dataset.v==='1'?'Devoir rouvert':'Devoir fermé : les élèves ne peuvent plus rendre');loadProf(PR.code,false)}else toast(r.erreur)});return}
   if(a==='pd-save'){const D=FM.dv||{};if(PR.busy3)return;PR.busy3=true;PR.e3='';render();
-    profOp({op:'devoir',id:D.id||'',titre:D.titre||'',niveau:D.niv,classes:(D.classes||[]).filter(c=>c[0]===String(D.niv)[0]),chap:D.chap||'',enonce:D.enonce||'',sur:D.sur||20,echeance:D.ech||'',image:D.img||'',garderImage:!!(D.oldImg&&!D.img)},90000)
+    profOp({op:'devoir',id:D.id||'',titre:D.titre||'',niveau:D.niv,classes:(D.classes||[]).filter(c=>c[0]===String(D.niv)[0]),chap:D.chap||'',matiere:D.mat||'Mathématiques',enonce:D.enonce||'',sur:D.sur||20,echeance:D.ech||'',image:D.img||'',garderImage:!!(D.oldImg&&!D.img)},90000)
       .then(r=>{PR.busy3=false;if(r.ok){toast(D.id?'Devoir modifié':'Devoir publié : les élèves le voient dans « Mes devoirs »');FM.dv=null;loadProf(PR.code,false)}else{PR.e3=r.erreur;render()}});return}
   if(a==='pp-ok'){PR.newCode=null;render();return}
   if(a==='pp-copy'){copyText(b.dataset.c,'Code copié');return}
@@ -4779,6 +4781,75 @@ function v2Act(a,b){
       if(r.ok){if(!N.cible)PR.newCode={nom:N.nom,code:r.code,classes:N.classes};toast(N.cible?'Compte modifié':'Compte créé');FM.pp=null;loadProf(PR.code,false)}else{PR.e4=r.erreur;render()}});return}
 }
 setTimeout(()=>loadDevoirs(true),4500);
+
+/* ---------------- v2.1 : choix élève / professeur, comptes profs autonomes, matières ---------------- */
+const MATIERES=['Mathématiques','Physique-Chimie','SVT'];
+const matCourt=m=>({'Mathématiques':'Maths','Physique-Chimie':'PC','SVT':'SVT'}[m]||m);
+function roleCardHTML(){const pc=profCode();
+  return `<section class="card" style="display:flex;flex-direction:column;gap:14px;border-top:6px solid var(--gold)">
+    <p class="eyebrow">Bienvenue sur Profdemaths 2.0</p><h2 style="font-size:21px;margin:0">Qui es-tu ?</h2>
+    <div class="seg"><button type="button" class="segb" data-act="role-eleve">🎒 Je suis élève</button><button type="button" class="segb" data-act="role-prof">🧑🏾‍🏫 Je suis professeur</button></div>
+    <p class="small">Élève : tu crées ton profil avec ton pseudo et ton code secret. Professeur : tu crées ton compte avec le code de la cellule de mathématiques.</p>
+    ${pc?`<div class="row"><button class="btn gold" data-act="prof-open">Ouvrir mon espace professeur</button></div>`:''}</section>`}
+function chkGrid(path,list,sel,lab){return `<div class="cgrid">${list.map(v=>`<label><input type="checkbox" data-f="${path}" value="${esc(v)}" ${(sel||[]).includes(v)?'checked':''}> ${esc(lab?lab(v):v)}</label>`).join('')}</div>`}
+function profAuthHTML(){const t=PR.auth||(profCode()?'code':'connexion');
+  const tabs=[['connexion','Se connecter'],['inscription','Créer mon compte'],['code','Code d\'accès']];
+  const I=FM.pi||(FM.pi={matieres:['Mathématiques'],classes:[]});
+  let body='';
+  if(t==='connexion')body=`<div class="form"><label>Pseudo<input data-f="pa.pseudo" autocapitalize="none" autocomplete="username" value="${esc(fval('pa.pseudo'))}"></label>
+      <label>Mot de passe<input type="password" data-f="pa.mdp" autocomplete="current-password" value="${esc(fval('pa.mdp'))}"></label></div>
+    <label class="small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pr-rem" checked> Rester connecté sur cet appareil</label>
+    <button class="btn gold" data-act="pa-login" ${PR.loading?'disabled':''}>${PR.loading?'Connexion…':'Se connecter'}</button>
+    <p class="small">Pas encore de compte ? <button class="linkbtn" data-act="pa-tab" data-t="inscription">Crée ton compte professeur</button>.</p>`;
+  else if(t==='inscription')body=`<div class="form">
+      <label>Prénom<input data-f="pi.prenom" value="${esc(I.prenom||'')}" autocomplete="given-name"></label>
+      <label>Nom<input data-f="pi.nom" value="${esc(I.nom||'')}" autocomplete="family-name"></label>
+      <label>Pseudo<input data-f="pi.pseudo" value="${esc(I.pseudo||'')}" autocapitalize="none" maxlength="20" placeholder="Ex. : m.faye"></label>
+      <label>Mot de passe (6 caractères au moins)<input type="password" data-f="pi.mdp" value="${esc(I.mdp||'')}" autocomplete="new-password"></label>
+      <label class="full">Confirme le mot de passe<input type="password" data-f="pi.mdp2" value="${esc(I.mdp2||'')}" autocomplete="new-password"></label></div>
+    <div><p class="lab">Mes matières</p>${chkGrid('pi.matieres',MATIERES,I.matieres)}</div>
+    <div><p class="lab">Mes classes</p>${chkGrid('pi.classes',STDCL,I.classes,clsLab)}</div>
+    <div class="form"><label class="full">Code de la cellule de mathématiques<input data-f="pi.cellule" value="${esc(I.cellule||'')}" autocapitalize="none" placeholder="Demande-le à M. Thiam"></label></div>
+    <button class="btn gold" data-act="pa-reg" ${PR.loading?'disabled':''}>${PR.loading?'Création…':'Créer mon compte professeur'}</button>`;
+  else {const c=profCode();body=`<label class="form full" style="display:flex;flex-direction:column;gap:6px;font-weight:700;color:var(--ink)">Code d'accès (administrateur ou code reçu)
+      <input id="pr-code" type="password" autocomplete="off" value="${esc(c)}" style="font:inherit;font-size:16px;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--surface2);color:var(--ink)"></label>
+    <label class="small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pr-rem" ${c?'checked':''}> Se souvenir du code sur cet appareil</label>
+    <button class="btn gold" data-act="prof-login" ${PR.loading?'disabled':''}>${PR.loading?'Chargement…':'Accéder au suivi'}</button>`}
+  return `<div class="chap-head"><p class="eyebrow">Espace professeur</p><h1>Cellule de mathématiques</h1>
+    <p class="small">Chaque professeur a son compte et ne voit que ses classes : résultats, listes, remédiation, devoirs en photo.</p></div>
+  <div class="skills">${tabs.map(([k,l])=>`<button class="skill ${t===k?'on':''}" data-act="pa-tab" data-t="${k}">${l}</button>`).join('')}</div>
+  <section class="card" style="display:flex;flex-direction:column;gap:12px">${body}${PR.err?`<p class="err">${esc(PR.err)}</p>`:''}</section>
+  <button class="btn ghost" data-act="home">Retour à l'accueil</button>`}
+function profCompteHTML(){const me=PR.me||{};
+  const C=FM.mc||(FM.mc={classes:(me.classes||[]).slice(),matieres:(me.matieres||['Mathématiques']).slice()});
+  return `<div class="chap-head"><h1>Mon compte</h1><p class="small">Pseudo : <b>@${esc(me.pseudo||'—')}</b>. Coche les classes où tu enseignes et tes matières : tu ne verras que ces classes.</p></div>
+  <section class="card" style="display:flex;flex-direction:column;gap:12px">
+    <div><p class="lab">Mes matières</p>${chkGrid('mc.matieres',MATIERES,C.matieres)}</div>
+    <div><p class="lab">Mes classes</p>${chkGrid('mc.classes',STDCL,C.classes,clsLab)}</div>
+    ${PR.e6?`<p class="err">${esc(PR.e6)}</p>`:''}
+    <div class="row"><button class="btn gold" data-act="pm-save" ${PR.busy6?'disabled':''}>${PR.busy6?'Enregistrement…':'Enregistrer'}</button></div></section>`}
+function v21Act(a,b){
+  if(a==='role-eleve'){S.role='eleve';render();return}
+  if(a==='role-prof'){S.view='prof';PR.eleve=null;const c=profCode();if(c&&!PR.rows&&!PR.loading){PR.auth='code';render();loadProf(c,true);return}PR.auth='connexion';render();window.scrollTo(0,0);return}
+  if(a==='pa-tab'){PR.auth=b.dataset.t;PR.err='';render();return}
+  if(a==='pa-login'){const ps=String(fval('pa.pseudo')).trim().toLowerCase(),md=fval('pa.mdp'),rem=(document.getElementById('pr-rem')||{}).checked!==false;
+    if(!ps||!md){PR.err='Écris ton pseudo et ton mot de passe.';render();return}
+    PR.loading=true;PR.err='';render();
+    api({action:'profConnexion',pseudo:ps,mdp:md}).then(r=>{PR.loading=false;if(r.ok){FM.pa=null;loadProf(r.code,rem)}else{PR.err=r.erreur;render()}});return}
+  if(a==='pa-reg'){const I=FM.pi||{};
+    if(!I.prenom||!I.nom){PR.err='Écris ton prénom et ton nom.';render();return}
+    if(!/^[a-z0-9_.-]{3,20}$/.test(String(I.pseudo||'').trim().toLowerCase())){PR.err='Pseudo : 3 à 20 lettres sans accent, chiffres, point, tiret ou _.';render();return}
+    if(String(I.mdp||'').length<6){PR.err='Mot de passe : 6 caractères au moins.';render();return}
+    if(I.mdp!==I.mdp2){PR.err='Les deux mots de passe sont différents.';render();return}
+    if(!(I.matieres||[]).length){PR.err='Coche au moins une matière.';render();return}
+    if(!(I.classes||[]).length){PR.err='Coche au moins une classe.';render();return}
+    if(!String(I.cellule||'').trim()){PR.err='Écris le code de la cellule de mathématiques.';render();return}
+    PR.loading=true;PR.err='';render();
+    api({action:'profInscrire',prenom:I.prenom,nom:I.nom,pseudo:String(I.pseudo).trim().toLowerCase(),mdp:I.mdp,matieres:I.matieres,classes:I.classes,cellule:I.cellule})
+      .then(r=>{PR.loading=false;if(r.ok){FM.pi=null;toast('Compte créé · bienvenue '+r.nom);loadProf(r.code,true)}else{PR.err=r.erreur;render()}});return}
+  if(a==='pm-save'){const C=FM.mc||{};PR.busy6=true;PR.e6='';render();
+    profOp({op:'monCompte',classes:C.classes||[],matieres:C.matieres||[]}).then(r=>{PR.busy6=false;if(r.ok){toast('Compte mis à jour');loadProf(PR.code,false)}else{PR.e6=r.erreur;render()}});return}
+}
 
 /* ---------- activités de découverte (contexte sénégalais) : en tête de chaque cours ---------- */
 const DECOUV={
@@ -4852,6 +4923,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementB
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,cid=S.cid,s=cid?st(cid):null;
+  if(a&&/^(role-|pa-|pm-)/.test(a)){v21Act(a,b);return}
   if(a&&/^(pf-etab|cp-etab|cp-save|devoirs$|zoom$|dv-|pt-|pl-|pc-|pd-|pp-)/.test(a)){v2Act(a,b);return}
   if(a==='posi'){if(DB.profil&&DB.profil.niveau&&DB.profil.niveau!==b.dataset.n){toast('Ton test de positionnement est celui de '+DB.profil.niveau+'.');return}S.view='posi';S.niv=b.dataset.n;PS.review=false;PS.run=null;render();window.scrollTo(0,0);return}
   if(a==='defis'){if(!canNiv(b.dataset.n)){nivLock(b.dataset.n);return}S.view='defis';S.niv=b.dataset.n;render();window.scrollTo(0,0);return}
