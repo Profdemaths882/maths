@@ -330,13 +330,15 @@ b.cx{color:var(--blue)}
 .decouverte .t{font-size:12px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold-ink)}
 .decouverte ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:4px}
 .decouverte details summary{cursor:pointer;font-weight:800;color:var(--blue)}
+.top .brand{min-width:0;overflow:hidden}.top .brand b,.top .brand small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}.top-actions{flex:none}
+@media (max-width:480px){#backbtn:not([hidden])~.share-btn{display:none}}
 @media print{.top,.noprint,.foot,#toast,#modal{display:none!important}main#app>*:not(.printzone){display:none!important}body{background:#fff}.printzone{box-shadow:none;border:none}}
 
 </style>
 <header class="top"><div class="top-in">
   <img id="toplogo" alt="Logo Profdemaths 2.0">
   <div class="brand"><b>PROF<span>DEMATHS</span> 2.0</b><small id="sub">Maths au collège · 6e · 5e · 4e · 3e</small></div>
-  <div class="top-actions"><button class="home-btn" data-act="home" id="homebtn" hidden>Accueil</button><button class="share-btn" data-act="share">Partager</button></div>
+  <div class="top-actions"><button class="home-btn" data-act="nav-back" id="backbtn" hidden aria-label="Revenir à l'écran précédent">‹ Retour</button><button class="home-btn" data-act="home" id="homebtn" hidden>Accueil</button><button class="share-btn" data-act="share">Partager</button></div>
 </div></header>
 <main id="app"></main>
 <div id="modal" class="modal" hidden></div><div id="toast" class="toast" hidden></div>
@@ -4851,6 +4853,20 @@ function v21Act(a,b){
     profOp({op:'monCompte',classes:C.classes||[],matieres:C.matieres||[]}).then(r=>{PR.busy6=false;if(r.ok){toast('Compte mis à jour');loadProf(PR.code,false)}else{PR.e6=r.erreur;render()}});return}
 }
 
+/* ---------------- bouton « Retour » (et bouton retour du téléphone) ---------------- */
+const NAV=[];let NAV_last=null,NAV_lock=false;
+function navSnap(){return JSON.stringify({v:S.view,n:S.niv,c:S.cid,t:S.tab,r:S.role||null,gi:S.gi==null?null:S.gi,ep:!!S.editProfil,pt:PR.tab||'suivi',pc:PR.copie||null,pe:PR.eleve||null,pa:PR.auth||null})}
+function navTrack(){const cur=navSnap();
+  if(NAV_lock){NAV_lock=false;NAV_last=cur}
+  else if(NAV_last!==null&&cur!==NAV_last){NAV.push(NAV_last);if(NAV.length>60)NAV.shift();try{history.pushState({pdm:NAV.length},'')}catch(e){}NAV_last=cur}
+  else NAV_last=cur;
+  const bb=document.getElementById('backbtn');if(bb)bb.hidden=!NAV.length}
+function navBack(){if(!NAV.length){S.view='home';render();return}
+  const s=JSON.parse(NAV.pop());S.view=s.v;S.niv=s.n;S.cid=s.c;S.tab=s.t;S.role=s.r||undefined;S.gi=s.gi;S.editProfil=s.ep;PR.tab=s.pt;PR.copie=s.pc;PR.eleve=s.pe;PR.auth=s.pa||undefined;
+  NAV_lock=true;render();window.scrollTo(0,0)}
+window.addEventListener('popstate',()=>{if(NAV.length)navBack()});
+{const _render=render;render=function(){_render();navTrack()}}
+
 /* ---------- activités de découverte (contexte sénégalais) : en tête de chaque cours ---------- */
 const DECOUV={
 '6e-DEC':["La balance du boutiquier","Chez le boutiquier du quartier, Moussa achète du riz. La balance électronique affiche <b>2,375 kg</b>. Sur sa fiche de santé, Moussa lit qu'il mesure <b>1,47 m</b>.",["Comment lit-on le nombre 2,375 ? Quelle est sa partie entière ?","Quel est le chiffre des dixièmes ? des millièmes ?","Écris 2,375 sous la forme d'une fraction de dénominateur 1 000."],"2,375 se lit « deux unités et trois cent soixante-quinze millièmes ». Partie entière : 2. Chiffre des dixièmes : 3 ; chiffre des millièmes : 5. 2,375 = 2 375/1 000."],
@@ -4923,6 +4939,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementB
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,cid=S.cid,s=cid?st(cid):null;
+  if(a==='nav-back'){navBack();return}
   if(a&&/^(role-|pa-|pm-)/.test(a)){v21Act(a,b);return}
   if(a&&/^(pf-etab|cp-etab|cp-save|devoirs$|zoom$|dv-|pt-|pl-|pc-|pd-|pp-)/.test(a)){v2Act(a,b);return}
   if(a==='posi'){if(DB.profil&&DB.profil.niveau&&DB.profil.niveau!==b.dataset.n){toast('Ton test de positionnement est celui de '+DB.profil.niveau+'.');return}S.view='posi';S.niv=b.dataset.n;PS.review=false;PS.run=null;render();window.scrollTo(0,0);return}
