@@ -4507,6 +4507,7 @@ function applySrv(r,silent){const P=DB.profil;if(!P||!r)return false;let ch=fals
   if(r.etab&&(r.ecole||'')!==(P.ecole||'')){P.ecole=r.ecole||'';ch=true}
   if(r.etab&&typeof r.verifie==='boolean'&&r.verifie!==P.verifie){P.verifie=r.verifie;ch=true}
   if(ch){save();if(!silent)toast('Ta classe : '+clsLab(P.classe));softRender();loadDevoirs(true)}
+  if(typeof posiDuServeur==='function'&&posiDuServeur(r)){if(S.view==='posi'&&!PS.run){S.view='home'}softRender()}
   return ch}
 function completeEtab(ch){const P=DB.profil;if(!P||!P.pseudo)return;
   api({action:'completer',pseudo:P.pseudo,etab:ch.etab,classe:ch.classe,ecole:ch.ecole||''}).then(r=>{if(r&&r.ok)applySrv(r,true)})}
@@ -5257,7 +5258,7 @@ function elAct(a){
     api({action:'connexion',pseudo:ps,pin,uid:uid()}).then(r=>{S.elBusy=false;
       if(r.ok&&r.retour){DB.profil={prenom:r.prenom||'',nom:r.nom||'',niveau:r.niveau,classe:String(r.classe||'').toUpperCase(),pseudo:ps,ok:true,etab:r.etab||'',ecole:r.ecole||''};
         if(typeof r.verifie==='boolean')DB.profil.verifie=r.verifie;if(!DB.profil.etab)delete DB.profil.etab;
-        save();FM.elg=null;S.eauth=null;S.view='home';toast('Bon retour, '+(r.prenom||ps)+' !');render();window.scrollTo(0,0);loadDevoirs(true);return}
+        save();posiDuServeur(r);FM.elg=null;S.eauth=null;S.view='home';toast('Bon retour, '+(r.prenom||ps)+' !');render();window.scrollTo(0,0);loadDevoirs(true);return}
       S.elErr=r.pris?'Code secret incorrect.':r.erreur==='Action inconnue.'?'La connexion sera disponible très bientôt. En attendant, touche « Créer un compte » et reprends ton pseudo et ton code secret.':(r.erreur||'Connexion impossible.');render()});return}
 }
 
@@ -5271,6 +5272,15 @@ function gateHomeHTML(){
   <section class="card"><p class="eyebrow">🔒 Réservé aux élèves inscrits</p><p class="small">Les cours, les exercices, les quiz, les évaluations et le classement s'ouvrent dès que tu as ton compte.</p></section>
   <p class="foot">Profdemaths 2.0 · « Des maths, des méthodes et des valeurs pour construire la réussite. »</p>
   <p class="foot"><button class="linkbtn" data-act="prof-open">Espace professeur</button></p>`}
+
+/* test de positionnement déjà passé (sur un autre téléphone) : on reprend le résultat du serveur */
+function posiDuServeur(r){const P=DB.profil,x=r&&r.posi;if(!P||!x||typeof POSI==='undefined')return false;const n=x.niveau||P.niveau;if(!POSI[n]||posiRec(n))return false;
+  const T=POSI[n],doms=T.doms.map(()=>null),txt=String(x.revoir||'');
+  T.doms.forEach((d,k)=>{const m=txt.match(new RegExp(d.nom.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*\\((\\d)/5\\)'));if(m)doms[k]=+m[1]});
+  let reste=Math.max(0,x.score-doms.reduce((a,v)=>a+(v||0),0));const vides=doms.map((v,k)=>v==null?k:-1).filter(k=>k>=0);
+  vides.forEach((k,i)=>{const v=Math.min(5,Math.max(4,Math.round(reste/(vides.length-i))));doms[k]=v;reste-=v});
+  DB.posi=DB.posi||{};DB.posi[n]={score:x.score,note20:Math.round(x.score/25*20*2)/2,doms,answers:[],eleve:eleve(),classe:P.classe||n,date:x.date||'',duree:'',attempt:x.tentative||1,serveur:true};
+  save();return true}
 
 /* ---------- actions ---------- */
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')e.target.hidden=true});
@@ -5329,6 +5339,7 @@ document.addEventListener('click',e=>{
       if(!r.ok){S.busy=false;S.err=r.erreur||"Ce pseudo n'est pas disponible.";render();return}
       if(r.niveau&&ORD.includes(r.niveau)){P.niveau=r.niveau;if(r.classe)P.classe=String(r.classe).toUpperCase()}
       if(r.etab){P.etab=r.etab;P.ecole=r.ecole||'';if(typeof r.verifie==='boolean')P.verifie=r.verifie}
+      if(r.posi){DB.profil=P;posiDuServeur(r)}
       const besoin=r.retour&&!r.etab;
       if(besoin){P.etab='';delete P.etab}
       finish(true);
