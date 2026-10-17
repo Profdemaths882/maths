@@ -4979,7 +4979,7 @@ const PH_VAC=[11,12,24,25];
 /* décisions de la cellule (rencontre du 15 octobre 2026) */
 const CELL_DATES={'2026':{
   exact:{'6e':{N4:'2026-11-24'},'5e':{N4:'2026-11-24'},'4e':{N4:'2026-11-26'},'3e':{N4:'2026-11-26'}},
-  titres:{N4:'1re évaluation harmonisée',D3:'2e évaluation (sujets de l\'IEF, date à préciser)'},
+  titres:{N4:'1re évaluation harmonisée',D3:'2e évaluation · IEF (date provisoire)',Y1:'Évaluation IEF du second semestre (date provisoire)',A4:'Évaluation IEF du second semestre (date provisoire)'},
   posi:'2026-10-20',
   rdv:[['2026-11-17','Rencontre de la cellule : validation des sujets de la 1re évaluation harmonisée, barèmes et grilles communes','En ligne']]}};
 const cellY=()=>CELL_DATES[String(schoolY())]||{exact:{},titres:{},rdv:[]}; /* semaines de vacances : déc. S4, janv. S1, avril S1-S2 */
@@ -5048,7 +5048,7 @@ function alerteDevoirHTML(e,eleve){const R=rougeDe(joursAvant(e.date)),ch=nomsCh
       <p style="margin-top:2px;color:${R.fg}"><b>${esc(quandTxt(e))}</b></p></div>${compteHTML(e)}</div>
     ${ch.length?`<p class="small" style="color:${R.sub}">${e.harm?'Chapitres prévus':'Chapitres'} : ${esc(ch.join(' · '))}</p>`:''}
     ${e.rq?`<p class="small" style="color:${R.sub}">${esc(e.rq)}</p>`:''}
-    ${e.harm?`<p class="small" style="color:${R.sub}">Date prévue par la progression harmonisée : ${eleve?'ton professeur te donnera le jour exact.':'programmez le jour exact dans « Progression » pour que vos élèves le voient.'}</p>`:''}
+    ${e.harm?`<p class="small" style="color:${R.sub}">Date provisoire, celle de la progression harmonisée, en attendant la confirmation de l'IEF : ${eleve?'ton professeur te donnera le jour exact.':'programmez le jour exact dans « Progression » pour que vos élèves le voient.'}</p>`:''}
     ${eleve?(e.posi?(typeof POSI!=='undefined'&&POSI[e.niv]&&!posiRec(e.niv)?`<div class="row"><button class="btn gold" data-act="posi" data-n="${e.niv}">Voir mon test de positionnement</button></div>`:''):`<div class="row"><button class="btn gold" data-act="rv-open" data-e="${esc(e.id)}">Réviser pour ce devoir</button></div>`):profRappelHTML(e,R)}</section>`}
 /* rappel au professeur avant le devoir : révision et évaluation */
 function profRappelHTML(e,R){const j=joursAvant(e.date);
