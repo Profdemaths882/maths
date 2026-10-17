@@ -5028,7 +5028,7 @@ function evenements(cl,ctrls){const niv=cl[0]+'e',E=EVALH[niv]||[],out=[];
   E.forEach(([w,lab,compo])=>{const i=phIdx(w),exa=ex[w]&&parseIso(ex[w]),d=exa||wkMon(i),depuis=compo===1?-1:compo===2?sem1:prev;
     if(compo===1)sem1=i;
     const proche=out.some(o=>!o.posi&&o.matiere==='Mathématiques'&&Math.abs(o.date-d)<=8*DAY);
-    if(exa||!proche)out.push({id:'H:'+niv+':'+w,titre:CY.titres[w]||lab,date:d,jour:!!exa,chaps:chapsAvant(niv,i,depuis),matiere:'Mathématiques',rq:'',par:exa?'Cellule de mathématiques':'Progression harmonisée',niv,cl,harm:!exa,cell:!!exa});
+    if(exa||!proche)out.push({id:'H:'+niv+':'+w,titre:CY.titres[w]||lab,date:d,jour:!!exa,chaps:chapsAvant(niv,i,depuis),matiere:'Mathématiques',rq:!exa&&lab===EV_IEF?'Date provisoire de la progression harmonisée, maintenue en attente de la confirmation de l\'IEF.':'',par:exa?'Cellule de mathématiques':'Progression harmonisée',niv,cl,harm:!exa,cell:!!exa});
     prev=i});
   return out.sort((a,b)=>a.date-b.date)}
 function prochains(cl,ctrls,max){return evenements(cl,ctrls).filter(e=>{const j=joursAvant(e.date);return j>=0&&j<=(max==null?14:max)||(!e.jour&&j<0&&j>-5)})}
