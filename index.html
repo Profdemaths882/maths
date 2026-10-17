@@ -3657,7 +3657,7 @@ async function flushQueue(){
 }
 async function registerPseudo(P,pin){
   try{
-    const r=await fetch(TRACK_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'inscrire',pseudo:P.pseudo,pin:pin||P.pinTmp||'',prenom:P.prenom,nom:P.nom,niveau:P.niveau,classe:P.classe,etab:P.etab||'',ecole:P.ecole||'',uid:uid()})});
+    const r=await fetch(TRACK_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'inscrire',pseudo:P.pseudo,pin:pin||P.pinTmp||'',prenom:P.prenom,nom:P.nom,niveau:P.niveau,classe:P.classe,etab:P.etab||'',ecole:P.ecole||'',codeClasse:P.codeClasse||'',uid:uid()})});
     return await r.json();
   }catch(e){return null}
 }
@@ -3689,7 +3689,7 @@ function loadProf(code,remember){
     if(!d||!d.ok){PR.err=(d&&d.erreur)||"Accès refusé.";try{localStorage.removeItem('pdm_prof_code')}catch(e){}}
     else{const H=d.entetes||COLS;PR.rows=d.lignes.map(l=>{const o={};H.forEach((h,i)=>o[h]=l[i]);o.n20=parseFloat(String(o['Note /20']).replace(',','.'))||0;
       const [dd,mm,yy]=String(o.Date).split('/');o.ts=new Date(+yy,+mm-1,+dd).getTime()||0;return o});
-      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:String(x[4]).toUpperCase().replace(/\s+/g,''),le:x[5],vu:x[6],etab:x[7]||'',ecole:x[8]||''}));PR.feuille=d.feuille||'';PR.me=d.moi||{admin:true,nom:'',classes:[]};PR.devoirs=d.devoirs||[];PR.copies=d.copies||[];PR.profs=d.profs||null;PR.dossier=d.dossier||'';PR.remed=d.remed||[];PR.prog=d.prog||[];PR.ctrl=d.controles||[];PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
+      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:String(x[4]).toUpperCase().replace(/\s+/g,''),le:x[5],vu:x[6],etab:x[7]||'',ecole:x[8]||'',vf:x[9]==='Oui'}));PR.feuille=d.feuille||'';PR.me=d.moi||{admin:true,nom:'',classes:[]};PR.devoirs=d.devoirs||[];PR.copies=d.copies||[];PR.profs=d.profs||null;PR.dossier=d.dossier||'';PR.remed=d.remed||[];PR.prog=d.prog||[];PR.ctrl=d.controles||[];PR.codes=d.codes||{};PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
     done()};
   s.onerror=()=>{clearTimeout(timer);PR.err="Impossible de joindre le serveur de suivi.";done()};
   s.src=TRACK_URL+'?code='+encodeURIComponent(code)+'&callback='+cb;document.body.appendChild(s);
@@ -4246,7 +4246,7 @@ function homeHTML(){
     <div><p class="eyebrow">Mon profil</p><p style="margin-top:4px"><b style="color:var(--ink)">${esc(eleve())}</b> · ${esc(clsLab(p.classe||p.niveau))}${p.etab==='HK'&&p.ecole?' · '+esc(p.ecole):''}</p></div>
     <div class="row" style="gap:8px;flex-wrap:wrap">${S.askOut?`<button class="btn" style="background:#b3261e;color:#fff" data-act="logout-ok">Oui, me déconnecter</button><button class="btn ghost" data-act="logout-no">Annuler</button>`:`<button class="btn ghost" data-act="edit-profil">Modifier</button><button class="btn ghost" data-act="logout">Se déconnecter</button>`}</div></section>
   ${S.askOut?`<section class="card"><p class="small">Ce téléphone oubliera ton profil et ta progression. Tes notes déjà envoyées à M. Thiam sont conservées : pour retrouver ton suivi, reconnecte-toi avec <b>ton pseudo et ton code secret</b>.</p></section>`:''}`}
-  ${remedAlertHTML()}${devoirAlertHTML()}${completeCardHTML()}${devoirsCardHTML()}${installHTML()}${rankCardHTML()}${p&&p.niveau?weakHTML(p.niveau,'Mes points faibles en '+p.niveau):''}
+  ${verifCardHTML()}${remedAlertHTML()}${devoirAlertHTML()}${completeCardHTML()}${devoirsCardHTML()}${installHTML()}${rankCardHTML()}${p&&p.niveau?weakHTML(p.niveau,'Mes points faibles en '+p.niveau):''}
   <section class="levels">${['6e','5e','4e','3e'].map(n=>{const s=lvlStats(n);return `<article class="card lvl ${mine===n?'mine':''}" style="--lc:${LV[n].color}">
     ${mine===n?'<span class="badge">Mon niveau</span>':''}
     <h2>${n}<small>${LV[n].nom}</small></h2>
@@ -4486,21 +4486,24 @@ function etabPickHTML(d,pre){const e=d.etab||'';
   return `<div class="full"><p class="lab">Mon établissement</p><div class="seg">
     <button type="button" class="segb ${e==='K'?'on':''}" data-act="${pre}-etab" data-v="K">🏫 Élève du ${ECOLE}</button>
     <button type="button" class="segb ${e==='HK'?'on':''}" data-act="${pre}-etab" data-v="HK">Autre établissement</button></div></div>
-  ${e==='K'?`<label>Ma classe<select id="${pre}-classe">${KLET.map(L=>`<option value="${L}" ${String(d.classe||'').toUpperCase().slice(-1)===L?'selected':''}>${L}</option>`).join('')}</select></label>`:''}
+  ${e==='K'?`<label>Ma classe<select id="${pre}-classe">${KLET.map(L=>`<option value="${L}" ${String(d.classe||'').toUpperCase().slice(-1)===L?'selected':''}>${L}</option>`).join('')}</select></label>
+    <label>Code de ma classe<input id="${pre}-code" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false" value="${esc(d.code||'')}" placeholder="Ex. : K7PQM"></label>
+    <p class="small full">🔐 Le <b>code de ta classe</b> t'est donné en classe par ton professeur de maths. Il prouve que tu es bien élève du ${ECOLE}.</p>`:''}
   ${e==='HK'?`<label>Mon école d'origine<input id="${pre}-ecole" maxlength="80" value="${esc(d.ecole||'')}" placeholder="Ex. : CEM Pikine 3"></label>
     <p class="small full">Les élèves qui ne sont pas au ${ECOLE} sont réunis dans une classe par niveau : <b>6e HK, 5e HK, 4e HK ou 3e HK</b>.</p>`:''}`}
 function grabDraft(){const g=id=>{const e=document.getElementById(id);return e?e.value:undefined};
   const d=S.draft||Object.assign({},DB.profil||{prenom:'',nom:'',niveau:S.niv||'6e'});
-  [['prenom','pf-prenom'],['nom','pf-nom'],['niveau','pf-niv'],['pseudo','pf-pseudo'],['pin','pf-pin'],['classe','pf-classe'],['ecole','pf-ecole']].forEach(([k,id])=>{const v=g(id);if(v!==undefined)d[k]=v});
+  [['prenom','pf-prenom'],['nom','pf-nom'],['niveau','pf-niv'],['pseudo','pf-pseudo'],['pin','pf-pin'],['classe','pf-classe'],['ecole','pf-ecole'],['code','pf-code']].forEach(([k,id])=>{const v=g(id);if(v!==undefined)d[k]=v});
   S.draft=d;return d}
 function grabComp(){const c=S.comp||(S.comp={etab:'',classe:'',ecole:''});const g=id=>{const e=document.getElementById(id);return e?e.value:undefined};
-  const a=g('cp-classe'),b=g('cp-ecole');if(a!==undefined)c.classe=a;if(b!==undefined)c.ecole=b;return c}
+  const a=g('cp-classe'),b=g('cp-ecole'),k=g('cp-code');if(a!==undefined)c.classe=a;if(b!==undefined)c.ecole=b;if(k!==undefined)c.code=k;return c}
 /* valeurs renvoyées par le serveur : la feuille Google fait foi */
 function applySrv(r,silent){const P=DB.profil;if(!P||!r)return false;let ch=false;
   if(r.niveau&&ORD.includes(r.niveau)&&r.niveau!==P.niveau){P.niveau=r.niveau;ch=true}
   if(r.classe&&String(r.classe).toUpperCase()!==P.classe){P.classe=String(r.classe).toUpperCase();ch=true}
   if(r.etab&&r.etab!==P.etab){P.etab=r.etab;ch=true}
   if(r.etab&&(r.ecole||'')!==(P.ecole||'')){P.ecole=r.ecole||'';ch=true}
+  if(r.etab&&typeof r.verifie==='boolean'&&r.verifie!==P.verifie){P.verifie=r.verifie;ch=true}
   if(ch){save();if(!silent)toast('Ta classe : '+clsLab(P.classe));softRender();loadDevoirs(true)}
   return ch}
 function completeEtab(ch){const P=DB.profil;if(!P||!P.pseudo)return;
@@ -4624,9 +4627,13 @@ function profListesHTML(){
   <section class="card printzone" style="display:flex;flex-direction:column;gap:10px">
     <p class="eyebrow">${esc(ECOLE)} · Mathématiques · 2026-2027</p>
     <h2 style="margin:0">Classe ${esc(clsLab(cl))} · ${L.length} élève${L.length>1?'s':''}</h2>
+    ${!hk&&PR.codes&&PR.codes[cl]?`<div class="enonce noprint" style="white-space:normal;display:flex;flex-direction:column;gap:8px"><p>🔐 Code de la classe ${esc(clsLab(cl))} : <b style="font-family:var(--display);font-size:22px;letter-spacing:3px">${esc(PR.codes[cl])}</b></p>
+      <p class="small">Donnez ce code <b>en classe</b> à vos élèves : sans lui, on ne peut pas s'inscrire au ${esc(ECOLE)}. S'il circule hors de la classe, changez-le.</p>
+      <div class="row"><button class="btn sm" data-act="pl-codecopy" data-c="${cl}">Copier le message pour la classe</button>${PR.codeAsk===cl?`<button class="btn sm" style="background:var(--red);color:#fff" data-act="pl-code" data-c="${cl}">Oui, changer le code</button><button class="btn ghost sm" data-act="pl-code-no">Annuler</button>`:`<button class="btn ghost sm" data-act="pl-code-ask" data-c="${cl}">Changer le code</button>`}</div></div>`:''}
+    ${!hk&&L.some(x=>!x.vf)?`<p class="small noprint" style="color:var(--red)"><b>⚠️ ${L.filter(x=>!x.vf).length} élève${L.filter(x=>!x.vf).length>1?'s':''} non vérifié${L.filter(x=>!x.vf).length>1?'s':''}</b> : inscrits avant le code de classe. Ils doivent entrer le code de la classe ; si vous les connaissez, validez-les vous-même, sinon supprimez leur compte.</p>`:''}
     <p class="small">${remL.length} en remédiation · ${sans} sans évaluation (groupe mis à jour après chaque évaluation du mois)${hk?' · élèves venant d\'autres établissements':''}</p>
     ${L.length?`<div class="tablewrap"><table class="bilan"><tr><th>N°</th><th>Nom</th><th>Prénom</th><th>Pseudo</th>${hk?'<th>École d\'origine</th>':''}<th>Groupe</th><th>Dernière activité</th></tr>
-    ${L.map((x,i)=>{const g=grp(x),p=pos[x.p];return `<tr><td>${i+1}</td><td><b>${esc(x.nom)}</b></td><td>${esc(x.prenom)}</td><td>@${esc(x.p)}</td>${hk?`<td>${esc(x.ecole||'—')}</td>`:''}<td>${g?`<span class="pill ${g.c}">${g.k} · ${g.nom}</span> <span class="small">${fmtN(p.sc)}/${p.sur} · ${esc(p.src)}</span>`:'<span class="pill soon">Pas de test</span>'}</td><td class="small">${esc(last[x.p]?last[x.p].d:x.vu||'—')}</td></tr>`}).join('')}</table></div>`:'<p class="small">Aucun élève inscrit dans cette classe pour le moment.</p>'}
+    ${L.map((x,i)=>{const g=grp(x),p=pos[x.p];return `<tr><td>${i+1}</td><td><b>${esc(x.nom)}</b>${!hk&&!x.vf?` <span class="pill bad noprint" title="Pas encore vérifié avec le code de classe">non vérifié</span> <button class="btn ghost sm noprint" style="padding:2px 8px" data-act="pl-valider" data-p="${esc(x.p)}">Valider</button>`:''}</td><td>${esc(x.prenom)}</td><td>@${esc(x.p)}</td>${hk?`<td>${esc(x.ecole||'—')}</td>`:''}<td>${g?`<span class="pill ${g.c}">${g.k} · ${g.nom}</span> <span class="small">${fmtN(p.sc)}/${p.sur} · ${esc(p.src)}</span>`:'<span class="pill soon">Pas de test</span>'}</td><td class="small">${esc(last[x.p]?last[x.p].d:x.vu||'—')}</td></tr>`}).join('')}</table></div>`:'<p class="small">Aucun élève inscrit dans cette classe pour le moment.</p>'}
   </section>
   <div class="row noprint"><button class="btn" data-act="pl-print">🖨 Imprimer la liste</button><button class="btn ghost" data-act="pl-copy">Copier (pour Excel / Sheets)</button></div>
   <section class="card noprint" style="display:flex;flex-direction:column;gap:12px;border-top:6px solid var(--red)">
@@ -4719,14 +4726,20 @@ function v2Act(a,b){
   if(a==='cp-save'){const c=grabComp(),P=DB.profil;if(S.cpBusy||!P)return;
     if(c.etab!=='K'&&c.etab!=='HK'){S.cpErr='Choisis ton établissement.';render();return}
     if(c.etab==='HK'&&String(c.ecole||'').trim().length<2){S.cpErr="Écris le nom de ton école d'origine.";render();return}
+    if(c.etab==='K'&&!String(c.code||'').trim()){S.cpErr="Écris le code de ta classe (demande-le à ton professeur de maths).";render();return}
     const d0=P.niveau[0],cl=c.etab==='HK'?d0+'HK':d0+(KLET.includes(String(c.classe||'A').slice(-1))?String(c.classe||'A').slice(-1):'A');
     S.cpBusy=true;S.cpErr='';render();
-    api({action:'completer',pseudo:P.pseudo,etab:c.etab,classe:cl,ecole:String(c.ecole||'').trim()}).then(r=>{S.cpBusy=false;
+    api({action:'completer',pseudo:P.pseudo,etab:c.etab,classe:cl,ecole:String(c.ecole||'').trim(),codeClasse:String(c.code||'').trim()}).then(r=>{S.cpBusy=false;
       if(r.ok){applySrv(r,true);S.comp=null;toast('Profil complété · '+clsLab(DB.profil.classe))}else S.cpErr=r.erreur||'Enregistrement impossible.';render()});return}
   if(a==='devoirs'){S.view='devoirs';render();window.scrollTo(0,0);loadDevoirs(true);return}
   if(a.startsWith('dv-')){dvAct(a,b);return}
   /* espace professeur */
   if(a==='pt-tab'){PR.tab=b.dataset.t;PR.copie=null;PR.e2=PR.e3=PR.e4=PR.e5='';render();window.scrollTo(0,0);return}
+  if(a==='pl-code-ask'){PR.codeAsk=b.dataset.c;render();return}
+  if(a==='pl-code-no'){PR.codeAsk=null;render();return}
+  if(a==='pl-code'){const c=b.dataset.c;PR.codeAsk=null;profOp({op:'codeClasse',classe:c}).then(r=>{if(r.ok){PR.codes=r.codes||PR.codes;toast('Nouveau code pour '+clsLab(c)+' : '+r.code)}else toast(r.erreur);render()});return}
+  if(a==='pl-codecopy'){const c=b.dataset.c;copyText(`Classe de ${clsLab(c)} · ${ECOLE}\nPour t'inscrire sur Profdemaths 2.0 (${APP_URL}) : choisis « Élève du ${ECOLE} », ta classe ${c.slice(-1)}, et entre le code de la classe : ${PR.codes[c]}\nNe donne pas ce code à des élèves d'autres classes.`,'Message copié : envoyez-le dans le groupe WhatsApp de la classe');return}
+  if(a==='pl-valider'){const p=b.dataset.p;profOp({op:'valider',pseudo:p}).then(r=>{if(r.ok){const x=(PR.ins||[]).find(y=>y.p===p);if(x)x.vf=true;toast('Élève validé')}else toast(r.erreur);render()});return}
   if(a==='pl-cl'){PR.lcl=b.dataset.c;if(PR.tab!=='listes'){PR.tab='listes';window.scrollTo(0,0)}render();return}
   if(a==='pl-print'){window.print();return}
   if(a==='pl-copy'){const cl=PR.lcl,pos=posiParEleve(),L=(PR.ins||[]).filter(x=>x.c===cl).sort((x,y)=>(x.nom+' '+x.prenom).localeCompare(y.nom+' '+y.prenom,'fr'));
@@ -5190,6 +5203,31 @@ function v3Act(a,b){
       if(r.ok){PR.ctrl=r.controles||PR.ctrl;toast(C.id?'Devoir modifié':'Devoir programmé : vos élèves voient le compte à rebours');FM.ct=null}else PR.ctErr=r.erreur||'Enregistrement impossible.';render()});return}
 }
 
+/* ---------- élèves déjà inscrits au CEM Kennedy : vérification avec le code de classe ---------- */
+function verifCardHTML(){const p=DB.profil;if(!p||p.etab!=='K'||p.verifie!==false||!p.pseudo||!trackOn()||S.editProfil)return '';
+  const V=S.vf||(S.vf={classe:String(p.classe||'').slice(-1),code:'',hk:false,ecole:''});
+  return `<section class="card" role="alert" style="display:flex;flex-direction:column;gap:12px;border:2px solid var(--gold);border-top:8px solid var(--gold)">
+    <p class="eyebrow">🔐 Vérification de ton compte</p>
+    <h2 style="font-size:19px;margin:0">Prouve que tu es élève du ${ECOLE}</h2>
+    ${V.hk?`<p>Tu n'es pas au ${ECOLE} ? Pas de problème : tu passes dans la classe <b>${esc(p.niveau)} HK</b> et tu gardes tous tes résultats.</p>
+      <div class="form"><label class="full">Mon école<input data-f="vfm.ecole" maxlength="80" value="${esc(fval('vfm.ecole'))}" placeholder="Ex. : CEM Pikine 3"></label></div>`
+     :`<p>Entre le <b>code de ta classe</b>, donné en classe par ton professeur de maths. Sans ce code, ton compte risque d'être supprimé.</p>
+      <div class="form"><label>Ma classe<select data-f="vfm.classe">${KLET.map(L=>`<option value="${L}" ${fval('vfm.classe',V.classe)===L?'selected':''}>${esc(p.niveau[0])}${L}</option>`).join('')}</select></label>
+      <label>Code de ma classe<input data-f="vfm.code" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false" value="${esc(fval('vfm.code'))}" placeholder="Ex. : K7PQM"></label></div>`}
+    ${S.vfErr?`<p class="err">${esc(S.vfErr)}</p>`:''}
+    <div class="row"><button class="btn gold" data-act="vf-save" ${S.vfBusy?'disabled':''}>${S.vfBusy?'Vérification…':V.hk?'Passer en autre établissement':'Vérifier'}</button>
+      <button class="btn ghost" data-act="vf-hk">${V.hk?'Je suis bien au '+ECOLE:'Je ne suis pas au '+ECOLE}</button></div></section>`}
+function vfAct(a,b){const P=DB.profil,V=S.vf||(S.vf={});if(!P)return;
+  if(a==='vf-hk'){V.hk=!V.hk;S.vfErr='';render();return}
+  if(a==='vf-save'){if(S.vfBusy)return;const cl=fval('vfm.classe',V.classe||'A'),code=String(fval('vfm.code')).trim(),ec=String(fval('vfm.ecole')).trim();
+    if(!V.hk&&!code){S.vfErr='Écris le code de ta classe.';render();return}
+    if(V.hk&&ec.length<2){S.vfErr="Écris le nom de ton école.";render();return}
+    S.vfBusy=true;S.vfErr='';render();
+    api(V.hk?{action:'verifier',pseudo:P.pseudo,etab:'HK',ecole:ec}:{action:'verifier',pseudo:P.pseudo,etab:'K',classe:cl,codeClasse:code}).then(r=>{S.vfBusy=false;
+      if(r.ok){applySrv(r,true);P.verifie=!!r.verifie;save();S.vf=null;FM.vfm=null;toast(V.hk?'Tu es maintenant en '+clsLab(P.classe):'Compte vérifié · '+clsLab(P.classe));loadDevoirs(true)}
+      else S.vfErr=r.erreur||'Vérification impossible.';render()});return}
+}
+
 /* ---------- actions ---------- */
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')e.target.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('modal').hidden=true});
@@ -5199,6 +5237,7 @@ document.addEventListener('click',e=>{
   if(a==='nav-back'){navBack();return}
   if(a&&/^(role-|pa-|pm-)/.test(a)){v21Act(a,b);return}
   if(a&&/^(rv-|pg-|pk-)/.test(a)){v3Act(a,b);return}
+  if(a&&/^vf-/.test(a)){vfAct(a,b);render();return}
   if(a&&/^(pf-etab|cp-etab|cp-save|devoirs$|zoom$|dv-|pt-|pl-|pc-|pd-|pp-)/.test(a)){v2Act(a,b);return}
   if(a==='posi'){if(DB.profil&&DB.profil.niveau&&DB.profil.niveau!==b.dataset.n){toast('Ton test de positionnement est celui de '+DB.profil.niveau+'.');return}S.view='posi';S.niv=b.dataset.n;PS.review=false;PS.run=null;render();window.scrollTo(0,0);return}
   if(a==='defis'){if(!canNiv(b.dataset.n)){nivLock(b.dataset.n);return}S.view='defis';S.niv=b.dataset.n;render();window.scrollTo(0,0);return}
@@ -5230,10 +5269,10 @@ document.addEventListener('click',e=>{
       if(D.etab!=='K'&&D.etab!=='HK'){S.err="Indique ton établissement : "+ECOLE+" ou autre établissement.";render();return}
       P.etab=D.etab;
       if(D.etab==='HK'){P.ecole=t(D.ecole);if(P.ecole.length<2){S.err="Écris le nom de ton école d'origine.";render();return}P.classe=d0+'HK'}
-      else{P.ecole='';const L=String(D.classe||'A').toUpperCase().slice(-1);P.classe=d0+(KLET.includes(L)?L:'A')}
+      else{P.ecole='';const L=String(D.classe||'A').toUpperCase().slice(-1);P.classe=d0+(KLET.includes(L)?L:'A');P.codeClasse=t(D.code)}
     }
     const choix={etab:P.etab,classe:P.classe,ecole:P.ecole};
-    const finish=(ok)=>{const first=!old;S.draft=null;P.ok=ok;if(!ok)P.pinTmp=pin;DB.profil=P;save();S.editProfil=false;S.busy=false;S.err='';
+    const finish=(ok)=>{delete P.codeClasse;const first=!old;S.draft=null;P.ok=ok;if(!ok)P.pinTmp=pin;DB.profil=P;save();S.editProfil=false;S.busy=false;S.err='';
       if(typeof POSI!=='undefined'&&POSI[P.niveau]&&!posiRec(P.niveau)&&S.view!=='prof'){S.view='posi';S.niv=P.niveau;PS.run=null}else if(first&&S.view==='home'){S.view='level';S.niv=P.niveau}render();window.scrollTo({top:0,behavior:'smooth'});
       toast(ok?'Profil enregistré · @'+P.pseudo:'Profil enregistré. Ton pseudo sera vérifié à la prochaine connexion.');loadDevoirs(true)};
     if(!trackOn()){finish(true);return}
@@ -5243,7 +5282,7 @@ document.addEventListener('click',e=>{
       if(r===null){finish(false);return}
       if(!r.ok){S.busy=false;S.err=r.erreur||"Ce pseudo n'est pas disponible.";render();return}
       if(r.niveau&&ORD.includes(r.niveau)){P.niveau=r.niveau;if(r.classe)P.classe=String(r.classe).toUpperCase()}
-      if(r.etab){P.etab=r.etab;P.ecole=r.ecole||''}
+      if(r.etab){P.etab=r.etab;P.ecole=r.ecole||'';if(typeof r.verifie==='boolean')P.verifie=r.verifie}
       const besoin=r.retour&&!r.etab;
       if(besoin){P.etab='';delete P.etab}
       finish(true);
