@@ -4242,7 +4242,7 @@ function homeHTML(){
     <p class="lead">Tout le programme de 6e, 5e, 4e et 3e : cours rédigés, exercices corrigés pas à pas, quiz et évaluations notées sur 20.</p>
     <div style="margin-top:14px">${bulle('Le mot de M. Thiam',`<p>Choisis ton niveau, puis travaille chaque chapitre dans l'ordre : <b>Cours → S'entraîner → Quiz → Évaluation</b>. Avec <b>7/10 au quiz</b>, l'évaluation se débloque.</p><p>À la fin, envoie-moi ta <b>fiche de résultats</b> par WhatsApp ou en capture d'écran. Les nouveaux chapitres arrivent au fur et à mesure de nos cours.</p>`)}</div>
   </section>
-  ${!p&&S.role!=='eleve'?roleCardHTML():!p||S.editProfil||(trackOn()&&!p.pseudo)?profilForm(!p?'Avant de commencer, présente-toi : ton nom apparaîtra sur tes fiches de résultats.':!p.pseudo?'Nouveau : choisis ton pseudo et ton code secret.':''):`<section class="card row" style="justify-content:space-between">
+  ${!p&&S.role!=='eleve'?roleCardHTML():!p&&trackOn()&&!S.eauth?eleveChoixHTML():!p&&S.eauth==='login'?eleveLoginHTML():!p||S.editProfil||(trackOn()&&!p.pseudo)?profilForm(!p?'Avant de commencer, présente-toi : ton nom apparaîtra sur tes fiches de résultats.':!p.pseudo?'Nouveau : choisis ton pseudo et ton code secret.':''):`<section class="card row" style="justify-content:space-between">
     <div><p class="eyebrow">Mon profil</p><p style="margin-top:4px"><b style="color:var(--ink)">${esc(eleve())}</b> · ${esc(clsLab(p.classe||p.niveau))}${p.etab==='HK'&&p.ecole?' · '+esc(p.ecole):''}</p></div>
     <div class="row" style="gap:8px;flex-wrap:wrap">${S.askOut?`<button class="btn" style="background:#b3261e;color:#fff" data-act="logout-ok">Oui, me déconnecter</button><button class="btn ghost" data-act="logout-no">Annuler</button>`:`<button class="btn ghost" data-act="edit-profil">Modifier</button><button class="btn ghost" data-act="logout">Se déconnecter</button>`}</div></section>
   ${S.askOut?`<section class="card"><p class="small">Ce téléphone oubliera ton profil et ta progression. Tes notes déjà envoyées à M. Thiam sont conservées : pour retrouver ton suivi, reconnecte-toi avec <b>ton pseudo et ton code secret</b>.</p></section>`:''}`}
@@ -4853,14 +4853,14 @@ function v21Act(a,b){
 
 /* ---------------- bouton « Retour » (et bouton retour du téléphone) ---------------- */
 const NAV=[];let NAV_last=null,NAV_lock=false;
-function navSnap(){return JSON.stringify({v:S.view,n:S.niv,c:S.cid,t:S.tab,r:S.role||null,gi:S.gi==null?null:S.gi,ep:!!S.editProfil,pt:PR.tab||'suivi',pc:PR.copie||null,pe:PR.eleve||null,pa:PR.auth||null,rv:S.rv||null,pcl:PR.pcl||null})}
+function navSnap(){return JSON.stringify({v:S.view,n:S.niv,c:S.cid,t:S.tab,r:S.role||null,gi:S.gi==null?null:S.gi,ep:!!S.editProfil,pt:PR.tab||'suivi',pc:PR.copie||null,pe:PR.eleve||null,pa:PR.auth||null,rv:S.rv||null,pcl:PR.pcl||null,ea:S.eauth||null})}
 function navTrack(){const cur=navSnap();
   if(NAV_lock){NAV_lock=false;NAV_last=cur}
   else if(NAV_last!==null&&cur!==NAV_last){NAV.push(NAV_last);if(NAV.length>60)NAV.shift();try{history.pushState({pdm:NAV.length},'')}catch(e){}NAV_last=cur}
   else NAV_last=cur;
   const bb=document.getElementById('backbtn');if(bb)bb.hidden=!NAV.length}
 function navBack(){if(!NAV.length){S.view='home';render();return}
-  const s=JSON.parse(NAV.pop());S.view=s.v;S.niv=s.n;S.cid=s.c;S.tab=s.t;S.role=s.r||undefined;S.gi=s.gi;S.editProfil=s.ep;PR.tab=s.pt;PR.copie=s.pc;PR.eleve=s.pe;PR.auth=s.pa||undefined;S.rv=s.rv;PR.pcl=s.pcl;
+  const s=JSON.parse(NAV.pop());S.view=s.v;S.niv=s.n;S.cid=s.c;S.tab=s.t;S.role=s.r||undefined;S.gi=s.gi;S.editProfil=s.ep;PR.tab=s.pt;PR.copie=s.pc;PR.eleve=s.pe;PR.auth=s.pa||undefined;S.rv=s.rv;PR.pcl=s.pcl;S.eauth=s.ea;
   NAV_lock=true;render();window.scrollTo(0,0)}
 window.addEventListener('popstate',()=>{if(NAV.length)navBack()});
 {const _render=render;render=function(){_render();navTrack()}}
@@ -5228,6 +5228,37 @@ function vfAct(a,b){const P=DB.profil,V=S.vf||(S.vf={});if(!P)return;
       else S.vfErr=r.erreur||'Vérification impossible.';render()});return}
 }
 
+/* ---------- élève : « Créer mon compte » ou « Me connecter » ---------- */
+function eleveChoixHTML(){
+  return `<section class="card" style="display:flex;flex-direction:column;gap:14px;border-top:6px solid var(--gold)">
+    <p class="eyebrow">🎒 Espace élève</p><h2 style="font-size:21px;margin:0">As-tu déjà un compte ?</h2>
+    <div class="seg"><button type="button" class="segb" data-act="el-new">✨ Créer mon compte<br><small style="font-weight:600">C'est ma première fois</small></button>
+      <button type="button" class="segb" data-act="el-login">🔑 Me connecter<br><small style="font-weight:600">J'ai déjà un pseudo et un code secret</small></button></div>
+    <p class="small">Sur un nouveau téléphone, touche <b>Me connecter</b> : tu retrouves ta classe et ton suivi avec ton pseudo et ton code secret.</p>
+    <div class="row"><button class="btn ghost sm" data-act="el-role">← Je ne suis pas élève</button></div></section>`}
+function eleveLoginHTML(){
+  return `<section class="card" style="display:flex;flex-direction:column;gap:14px;border-top:6px solid var(--gold)">
+    <p class="eyebrow">🔑 Connexion élève</p><h2 style="font-size:21px;margin:0">Me connecter</h2>
+    <div class="form"><label>Mon pseudo<input data-f="elg.pseudo" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" value="${esc(fval('elg.pseudo'))}" placeholder="Ex. : awa_maths"></label>
+      <label>Mon code secret (4 chiffres)<input data-f="elg.pin" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="••••" value="${esc(fval('elg.pin'))}"></label></div>
+    ${S.elErr?`<p class="err">${esc(S.elErr)}</p>`:''}
+    <div class="row"><button class="btn gold" data-act="el-go" ${S.elBusy?'disabled':''}>${S.elBusy?'Connexion…':'Me connecter'}</button><button class="btn ghost" data-act="el-new">Créer un compte</button></div>
+    <p class="small">Code secret oublié ? Demande à ton professeur de maths : il peut supprimer ton compte pour que tu en crées un nouveau.</p></section>`}
+function elAct(a){
+  if(a==='el-role'){S.role=undefined;S.eauth=null;render();return}
+  if(a==='el-new'){S.eauth='new';S.elErr='';render();window.scrollTo(0,0);return}
+  if(a==='el-login'){S.eauth='login';S.elErr='';render();window.scrollTo(0,0);return}
+  if(a==='el-go'){if(S.elBusy)return;const ps=String(fval('elg.pseudo')).trim().toLowerCase(),pin=String(fval('elg.pin')).trim();
+    if(!/^[a-z0-9_.-]{3,20}$/.test(ps)){S.elErr='Écris ton pseudo.';render();return}
+    if(!/^\d{4}$/.test(pin)){S.elErr='Ton code secret a 4 chiffres.';render();return}
+    S.elBusy=true;S.elErr='';render();
+    api({action:'connexion',pseudo:ps,pin,uid:uid()}).then(r=>{S.elBusy=false;
+      if(r.ok&&r.retour){DB.profil={prenom:r.prenom||'',nom:r.nom||'',niveau:r.niveau,classe:String(r.classe||'').toUpperCase(),pseudo:ps,ok:true,etab:r.etab||'',ecole:r.ecole||''};
+        if(typeof r.verifie==='boolean')DB.profil.verifie=r.verifie;if(!DB.profil.etab)delete DB.profil.etab;
+        save();FM.elg=null;S.eauth=null;S.view='home';toast('Bon retour, '+(r.prenom||ps)+' !');render();window.scrollTo(0,0);loadDevoirs(true);return}
+      S.elErr=r.pris?'Code secret incorrect.':r.erreur==='Action inconnue.'?'La connexion sera disponible très bientôt. En attendant, touche « Créer un compte » et reprends ton pseudo et ton code secret.':(r.erreur||'Connexion impossible.');render()});return}
+}
+
 /* ---------- actions ---------- */
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')e.target.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('modal').hidden=true});
@@ -5238,6 +5269,7 @@ document.addEventListener('click',e=>{
   if(a&&/^(role-|pa-|pm-)/.test(a)){v21Act(a,b);return}
   if(a&&/^(rv-|pg-|pk-)/.test(a)){v3Act(a,b);return}
   if(a&&/^vf-/.test(a)){vfAct(a,b);render();return}
+  if(a&&/^el-/.test(a)){elAct(a);return}
   if(a&&/^(pf-etab|cp-etab|cp-save|devoirs$|zoom$|dv-|pt-|pl-|pc-|pd-|pp-)/.test(a)){v2Act(a,b);return}
   if(a==='posi'){if(DB.profil&&DB.profil.niveau&&DB.profil.niveau!==b.dataset.n){toast('Ton test de positionnement est celui de '+DB.profil.niveau+'.');return}S.view='posi';S.niv=b.dataset.n;PS.review=false;PS.run=null;render();window.scrollTo(0,0);return}
   if(a==='defis'){if(!canNiv(b.dataset.n)){nivLock(b.dataset.n);return}S.view='defis';S.niv=b.dataset.n;render();window.scrollTo(0,0);return}
