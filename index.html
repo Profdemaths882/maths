@@ -4223,6 +4223,7 @@ function profilForm(why){
 
 /* ---------- vues ---------- */
 function render(){
+  if(!acces()&&S.view!=='home'&&S.view!=='prof')S.view='home';
   document.getElementById('homebtn').hidden=S.view==='home';
   document.getElementById('sub').textContent=DB.profil?`${eleve()} · ${clsLab(DB.profil.classe||DB.profil.niveau)}`:'Maths au collège · 6e · 5e · 4e · 3e';
   const app=document.getElementById('app');
@@ -4235,6 +4236,7 @@ function lvlStats(niv){
   return{tot:ids.length,av:av.length,done:done.length};
 }
 function homeHTML(){
+  if(!acces())return gateHomeHTML();
   const p=DB.profil,mine=p&&p.niveau;
   return `<section class="card hero">
     <p class="eyebrow">Mathématiques · ${ECOLE} · 2026-2027</p>
@@ -5259,6 +5261,17 @@ function elAct(a){
       S.elErr=r.pris?'Code secret incorrect.':r.erreur==='Action inconnue.'?'La connexion sera disponible très bientôt. En attendant, touche « Créer un compte » et reprends ton pseudo et ton code secret.':(r.erreur||'Connexion impossible.');render()});return}
 }
 
+/* ---------- accès réservé : sans compte, on ne voit ni les cours ni le classement ---------- */
+function acces(){const p=DB.profil;if(profCode()||(PR&&PR.code))return true;if(!p)return false;if(trackOn()&&!p.pseudo)return false;return true}
+function gateHomeHTML(){
+  return `<section class="card hero"><p class="eyebrow">Mathématiques · ${ECOLE} · 2026-2027</p>
+    <h1>Les maths, <span>partout</span>, tout le temps.</h1>
+    <p class="lead">Cours, exercices corrigés, quiz et évaluations de la 6e à la 3e. <b>Crée ton compte ou connecte-toi</b> pour commencer.</p></section>
+  ${S.role!=='eleve'?roleCardHTML():!trackOn()?profilForm('Avant de commencer, présente-toi.'):!S.eauth?eleveChoixHTML():S.eauth==='login'?eleveLoginHTML():profilForm('Crée ton compte : ton nom apparaîtra sur tes fiches de résultats.')}
+  <section class="card"><p class="eyebrow">🔒 Réservé aux élèves inscrits</p><p class="small">Les cours, les exercices, les quiz, les évaluations et le classement s'ouvrent dès que tu as ton compte.</p></section>
+  <p class="foot">Profdemaths 2.0 · « Des maths, des méthodes et des valeurs pour construire la réussite. »</p>
+  <p class="foot"><button class="linkbtn" data-act="prof-open">Espace professeur</button></p>`}
+
 /* ---------- actions ---------- */
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')e.target.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('modal').hidden=true});
@@ -5270,6 +5283,7 @@ document.addEventListener('click',e=>{
   if(a&&/^(rv-|pg-|pk-)/.test(a)){v3Act(a,b);return}
   if(a&&/^vf-/.test(a)){vfAct(a,b);render();return}
   if(a&&/^el-/.test(a)){elAct(a);return}
+  if(!acces()&&/^(level|open|rank|posi|defis|guide|gs|devoirs|tab|quiz-start|eval-start|rv-open|rv-blanc|skill|next)$/.test(a)){S.view='home';render();window.scrollTo(0,0);toast("Crée ton compte ou connecte-toi d'abord.");return}
   if(a&&/^(pf-etab|cp-etab|cp-save|devoirs$|zoom$|dv-|pt-|pl-|pc-|pd-|pp-)/.test(a)){v2Act(a,b);return}
   if(a==='posi'){if(DB.profil&&DB.profil.niveau&&DB.profil.niveau!==b.dataset.n){toast('Ton test de positionnement est celui de '+DB.profil.niveau+'.');return}S.view='posi';S.niv=b.dataset.n;PS.review=false;PS.run=null;render();window.scrollTo(0,0);return}
   if(a==='defis'){if(!canNiv(b.dataset.n)){nivLock(b.dataset.n);return}S.view='defis';S.niv=b.dataset.n;render();window.scrollTo(0,0);return}
