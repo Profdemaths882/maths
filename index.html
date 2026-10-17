@@ -4532,10 +4532,10 @@ function loadDevoirs(force){const P=DB.profil;if(!trackOn()||!P||!P.pseudo||!P.c
   s.src=TRACK_URL+'?action=mesdevoirs&classe='+encodeURIComponent(P.classe)+'&pseudo='+encodeURIComponent(P.pseudo)+'&k='+encodeURIComponent(k)+'&callback='+cb;document.body.appendChild(s)}
 function devoirsCardHTML(){const P=DB.profil;if(!P||!P.pseudo||!trackOn())return '';
   const L=DV.list||[],todo=L.filter(d=>d.actif&&!DV.copies[d.id]),vus=DB.vusCopies||{},neuf=Object.values(DV.copies).filter(c=>c.statut==='Corrigée'&&!vus[c.id]);
-  if(!L.length)return '';
+  if(!DV.loading&&Date.now()-DV.at>60000)setTimeout(()=>loadDevoirs(),0);   /* actualise à chaque retour à l'accueil (au plus une fois par minute) */
   return `<section class="card" style="display:flex;flex-direction:column;gap:8px;border-top:6px solid var(--blue)">
     <p class="eyebrow">📷 Devoirs à rendre en photo</p>
-    <p><b style="color:var(--ink)">${todo.length?todo.length+' devoir'+(todo.length>1?'s':'')+' à rendre':'Aucun devoir à rendre'}</b>${neuf.length?` · <span class="notif">${neuf.length}</span> copie${neuf.length>1?'s':''} corrigée${neuf.length>1?'s':''}`:''}</p>
+    <p><b style="color:var(--ink)">${DV.loading&&!DV.list?'Chargement des devoirs…':todo.length?todo.length+' devoir'+(todo.length>1?'s':'')+' à rendre':'Aucun devoir à rendre pour le moment'}</b>${neuf.length?` · <span class="notif">${neuf.length}</span> copie${neuf.length>1?'s':''} corrigée${neuf.length>1?'s':''}`:''}</p>
     <p class="small">Rédige ta réponse sur ton cahier, prends-la en photo et envoie-la : ton professeur la corrige et te met une note.</p>
     <div class="row"><button class="btn gold" data-act="devoirs">Ouvrir mes devoirs</button></div></section>`}
 function dvCardHTML(d){const c=DV.copies[d.id],ph=DV.photos[d.id]||[],repl=DV.repl[d.id],busy=DV.busy===d.id;
@@ -4767,6 +4767,7 @@ function v2Act(a,b){
       if(r.ok){if(!N.cible)PR.newCode={nom:N.nom,code:r.code,classes:N.classes};toast(N.cible?'Compte modifié':'Compte créé');FM.pp=null;loadProf(PR.code,false)}else{PR.e4=r.erreur;render()}});return}
 }
 setTimeout(()=>loadDevoirs(true),4500);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&(S.view==='home'||S.view==='devoirs'))loadDevoirs()});
 
 /* ---------------- v2.1 : choix élève / professeur, comptes profs autonomes, matières ---------------- */
 const MATIERES=['Mathématiques','Physique-Chimie','SVT'];
