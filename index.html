@@ -3687,9 +3687,9 @@ function loadProf(code,remember){
   const timer=setTimeout(()=>{PR.err="Pas de réponse du serveur. Vérifie ta connexion puis réessaie.";done()},20000);
   window[cb]=d=>{clearTimeout(timer);
     if(!d||!d.ok){PR.err=(d&&d.erreur)||"Accès refusé.";try{localStorage.removeItem('pdm_prof_code')}catch(e){}}
-    else{const H=d.entetes||COLS;PR.rows=d.lignes.map(l=>{const o={};H.forEach((h,i)=>o[h]=l[i]);o.n20=parseFloat(String(o['Note /20']).replace(',','.'))||0;
+    else{const H=d.entetes||COLS;PR.rows=d.lignes.map(l=>{const o={};H.forEach((h,i)=>o[h]=l[i]);o.Classe=normCl(o.Classe);o.n20=parseFloat(String(o['Note /20']).replace(',','.'))||0;
       const [dd,mm,yy]=String(o.Date).split('/');o.ts=new Date(+yy,+mm-1,+dd).getTime()||0;return o});
-      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:String(x[4]).toUpperCase().replace(/\s+/g,''),le:x[5],vu:x[6],etab:x[7]||'',ecole:x[8]||'',vf:x[9]==='Oui'}));PR.feuille=d.feuille||'';PR.me=d.moi||{admin:true,nom:'',classes:[]};PR.devoirs=d.devoirs||[];PR.copies=d.copies||[];PR.profs=d.profs||null;PR.dossier=d.dossier||'';PR.remed=d.remed||[];PR.prog=d.prog||[];PR.ctrl=d.controles||[];PR.codes=d.codes||{};PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
+      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:normCl(x[4]),le:x[5],vu:x[6],etab:x[7]||'',ecole:x[8]||'',vf:x[9]==='Oui'}));PR.feuille=d.feuille||'';PR.me=d.moi||{admin:true,nom:'',classes:[]};PR.devoirs=d.devoirs||[];PR.copies=d.copies||[];PR.profs=d.profs||null;PR.dossier=d.dossier||'';PR.remed=d.remed||[];PR.prog=d.prog||[];PR.ctrl=d.controles||[];PR.codes=d.codes||{};PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
     done()};
   s.onerror=()=>{clearTimeout(timer);PR.err="Impossible de joindre le serveur de suivi.";done()};
   s.src=TRACK_URL+'?code='+encodeURIComponent(code)+'&callback='+cb;document.body.appendChild(s);
@@ -4462,7 +4462,9 @@ function reviewHTML(E){
 /*  remédiation, listes de classe, comptes professeurs                     */
 /* ====================================================================== */
 const KLET=['A','B','C'];
-const clsLab=c=>{c=String(c||'');return /^[3-6]HK$/.test(c)?c[0]+'e HK':c};
+/* anciennes classes D à H (avant la règle A, B, C = Kennedy) : ce sont des élèves hors Kennedy, rangés en HK */
+const normCl=c=>{c=String(c||'').toUpperCase().replace(/\s+/g,'');return /^[3-6][D-H]$/.test(c)?c[0]+'HK':c};
+const clsLab=c=>{c=normCl(c);return /^[3-6]HK$/.test(c)?c[0]+'e HK':c};
 const STDCL=['6','5','4','3'].flatMap(n=>KLET.concat('HK').map(L=>n+L));
 const clsSort=(a,b)=>{const o=x=>(6-(+String(x)[0]||0))*100+(/HK$/.test(x)?90:String(x).charCodeAt(1)||0);return o(a)-o(b)||String(a).localeCompare(String(b))};
 const fmtN=v=>String(v==null?'':v).replace('.',',');
@@ -4616,7 +4618,7 @@ document.addEventListener('change',async e=>{const t=e.target;if(!t||!t.matches)
 
 /* ---------------- espace professeur ---------------- */
 function profClasses(){const me=PR.me||{admin:true,classes:[]};if(!me.admin)return me.classes.slice().sort(clsSort);
-  const seen=(PR.rows||[]).map(r=>r.Classe).concat((PR.ins||[]).map(x=>x.c)).filter(c=>/^[3-6](?:[A-H]|HK)$/.test(c));
+  const seen=(PR.rows||[]).map(r=>r.Classe).concat((PR.ins||[]).map(x=>x.c)).filter(c=>/^[3-6](?:[A-C]|HK)$/.test(c));
   return [...new Set(STDCL.concat(seen))].sort(clsSort)}
 
 /* ---------- banque de sujets : devoirs et compositions types (sujet + corrigé), sujets des évaluations du mois ---------- */
