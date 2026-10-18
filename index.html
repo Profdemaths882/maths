@@ -2573,7 +2573,7 @@ function gTVpara(){
 const TV_Q=[
   ["Une translation conserve :","les longueurs, les angles, l'alignement et le parallélisme",["seulement les longueurs","seulement le sens","rien du tout"],"Comme la symétrie centrale, la translation conserve les longueurs, les angles, les aires, l'alignement, le parallélisme et l'orthogonalité."],
   ["L'image d'une droite (D) par une translation est :","une droite parallèle à (D)",["une droite perpendiculaire à (D)","un segment","un cercle"],"Une translation transforme une droite en une droite parallèle."],
-  ["I est le milieu de [AB]. Quelle égalité est vraie ?",VEC('AI')+' = '+VEC('IB'),[VEC('AI')+' = '+VEC('BI'),VEC('IA')+' = '+VEC('IB'),VEC('AB')+' = '+VEC('AI')],"I est le milieu de [AB] si et seulement si les vecteurs AI et IB sont égaux."],
+  ["I est le milieu de [AB]. Quelle égalité est vraie ?",VEC('AI')+' = '+VEC('IB'),[VEC('AI')+' = '+VEC('BI'),VEC('IA')+' = '+VEC('IB'),VEC('AB')+' = '+VEC('AI')],"I est le milieu de [AB] si et seulement si <span class='vec'>AI</span> = <span class='vec'>IB</span>."],
   ["Deux vecteurs égaux ont :","même direction, même sens et même longueur",["seulement même longueur","seulement même direction","même origine"],"Un vecteur est défini par une direction, un sens et une longueur."],
 ];
 function gTVq(){const [q,g,b,w]=pick(TV_Q);return mkQ({skill:"Propriétés",q,good:g[0]==='<'?m(g):cap(g),bad:b.map(h=>({h:h[0]==='<'?m(h):cap(h),why:w})),hint:"Revois les propriétés du cours.",corr:[w,`D'où : <b>${g[0]==='<'?m(g):g}</b>.`]})}
@@ -2994,7 +2994,7 @@ function gTRApar(){const d=ri(2,8);return mkQ({skill:"Deux symétries orthogonal
   bad:[{h:`une translation de ${d} cm`,why:"La longueur de la translation est le double de la distance entre les axes."},{h:"une symétrie centrale",why:"C'est le cas d'axes perpendiculaires."},{h:"une rotation de 90°",why:"Les axes sont parallèles : on obtient une translation."}],hint:"Axes parallèles → translation de longueur double.",corr:[`Si (D₁) // (D₂), la composée des deux symétries orthogonales est une <b>translation</b> perpendiculaire aux axes, de longueur le double de la distance entre eux.`,`D'où <b>${2*d} cm</b>.`]})}
 const TRA_Q=[["La composée de deux symétries orthogonales d'axes perpendiculaires en O est :","la symétrie centrale de centre O",["une translation","l'identité","une symétrie orthogonale"],"Axes perpendiculaires en O → symétrie de centre O (rotation de 180°)."],
   ["La composée de deux symétries orthogonales d'axes sécants en O formant un angle α est :","la rotation de centre O et d'angle 2α",["la rotation d'angle α","une translation","une symétrie centrale"],"Axes sécants en O → rotation de centre O et d'angle 2α."],
-  ["La composée de la translation de vecteur u⃗ puis de celle de vecteur v⃗ est :","la translation de vecteur u + v",["la translation de vecteur u − v","une rotation","une symétrie"],"Deux translations successives donnent la translation de vecteur somme."]].map(([q,g,b,w])=>[q.replace(/u⃗/g,'u').replace(/v⃗/g,'v'),g,b,w]);
+  ["La composée de la translation de vecteur <span class='vec'>u</span> puis de celle de vecteur <span class='vec'>v</span> est :","la translation de vecteur <span class='vec'>u</span> + <span class='vec'>v</span>",["la translation de vecteur <span class='vec'>u</span> − <span class='vec'>v</span>","une rotation","une symétrie"],"Deux translations successives donnent la translation de vecteur somme."]].map(([q,g,b,w])=>[q.replace(/u⃗/g,'u').replace(/v⃗/g,'v'),g,b,w]);
 function coursTRA(){
   return bulle('Transformations du plan',`<p>Enchaîner deux transformations donne… une autre transformation. Trois cas à connaître pour les symétries, un pour les translations.</p>`)+
   lesson('1.',"Deux symétries orthogonales successives",`<div class="tablewrap"><table><tr><th>Axes</th><th>Transformation obtenue</th></tr><tr><td>parallèles (distance d)</td><td>translation de longueur 2d, perpendiculaire aux axes</td></tr><tr><td>perpendiculaires en O</td><td>symétrie de centre O</td></tr><tr><td>sécants en O (angle α)</td><td>rotation de centre O et d'angle 2α</td></tr></table></div>`)+
@@ -4499,6 +4499,22 @@ function compressImg(file,max,q){max=max||1600;q=q||0.72;
       const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);URL.revokeObjectURL(u);
       let d=c.toDataURL('image/jpeg',q);if(d.length>1.8e6)d=c.toDataURL('image/jpeg',0.5);res(d)};
     im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('image'))};im.src=u})}
+/* PDF : les pages (4 au maximum) sont converties en une seule image sur le téléphone avant l'envoi */
+let PDFJS=null;
+function loadPdfJs(){if(PDFJS)return PDFJS;
+  PDFJS=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    sc.onload=()=>{try{window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';res(window.pdfjsLib)}catch(e){rej(e)}};
+    sc.onerror=()=>{PDFJS=null;rej(new Error('pdfjs'))};document.head.appendChild(sc)});return PDFJS}
+async function pdfToImg(file,maxPages){maxPages=maxPages||4;const lib=await loadPdfJs();
+  const doc=await lib.getDocument({data:await file.arrayBuffer()}).promise;const n=Math.min(doc.numPages,maxPages),W=1100,cs=[];
+  for(let i=1;i<=n;i++){const pg=await doc.getPage(i),v0=pg.getViewport({scale:1}),v=pg.getViewport({scale:W/v0.width});
+    const c=document.createElement('canvas');c.width=Math.round(v.width);c.height=Math.round(v.height);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+    await pg.render({canvasContext:x,viewport:v}).promise;cs.push(c)}
+  const gap=16,H=cs.reduce((a,c)=>a+c.height,0)+gap*(cs.length-1),out=document.createElement('canvas');out.width=W;out.height=H;
+  const o=out.getContext('2d');o.fillStyle='#d9dee8';o.fillRect(0,0,W,H);let y=0;cs.forEach(c=>{o.drawImage(c,0,y);y+=c.height+gap});
+  let q=0.72,d=out.toDataURL('image/jpeg',q);while(d.length>1.8e6&&q>0.35){q-=0.1;d=out.toDataURL('image/jpeg',q)}
+  if(d.length>1.8e6){const k=Math.sqrt(1.6e6/d.length),c2=document.createElement('canvas');c2.width=Math.round(W*k);c2.height=Math.round(H*k);c2.getContext('2d').drawImage(out,0,0,c2.width,c2.height);d=c2.toDataURL('image/jpeg',0.6)}
+  return d}
 function openZoom(src){const m=document.getElementById('modal');
   m.innerHTML=`<div class="modal-card wide" role="dialog" aria-modal="true" aria-label="Photo agrandie"><img src="${src}" alt="Photo agrandie" style="width:100%;border-radius:12px;background:#fff"><button class="btn" data-act="close-modal">Fermer</button></div>`;m.hidden=false}
 
@@ -4613,7 +4629,10 @@ document.addEventListener('change',async e=>{const t=e.target;if(!t||!t.matches)
     for(const f of fs){if(arr.length>=4){DV.e[id]='4 photos au maximum.';break}try{arr.push(await compressImg(f))}catch(x){DV.e[id]="Cette image n'a pas pu être lue : reprends la photo."}}
     DV.ph='';render();return}
   if(t.matches('input[type=file][data-pdimg]')){const f=(t.files||[])[0];if(!f)return;FM.dv=FM.dv||{};
-    try{FM.dv.img=await compressImg(f,1400,0.75)}catch(x){PR.e3="Cette image n'a pas pu être lue."}render()}
+    const isPdf=/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name);
+    if(isPdf){PR.e3='';PR.busy3=true;render()}
+    try{FM.dv.img=isPdf?await pdfToImg(f):await compressImg(f,1400,0.75)}catch(x){PR.e3=isPdf?"Ce PDF n'a pas pu être lu (vérifie la connexion internet, puis réessaie).":"Cette image n'a pas pu être lue."}
+    PR.busy3=false;render()}
 });
 
 /* ---------------- espace professeur ---------------- */
@@ -4746,7 +4765,8 @@ function profDevoirsHTML(){
       <label>Noté sur<input type="number" min="1" data-f="dv.sur" value="${esc(D.sur||'20')}"></label>
       <label>À rendre le (facultatif)<input type="date" data-f="dv.ech" value="${esc(D.ech||'')}"></label></div>
     <div class="row">${D.img?`<div class="thumb" style="width:110px"><img src="${D.img}" alt="Figure de l'énoncé"><button data-act="pd-noimg" aria-label="Retirer la figure">✕</button></div>`:D.oldImg?'<p class="small">Une figure est déjà jointe à ce devoir.</p>':''}
-      <label class="btn ghost filebtn">🖼 ${D.img||D.oldImg?'Changer la':'Ajouter une'} figure (photo de l'énoncé)<input type="file" accept="image/*" data-pdimg="1"></label></div>
+      <label class="btn ghost filebtn">🖼 ${D.img||D.oldImg?'Changer l\'énoncé':'Ajouter l\'énoncé'} (photo ou PDF)<input type="file" accept="image/*,application/pdf,.pdf" data-pdimg="1"></label>
+      <p class="small">Tu peux déposer ton devoir au format <b>PDF</b> (4 pages au maximum) : il est converti en image et affiché aux élèves.</p></div>
     ${PR.e3?`<p class="err">${esc(PR.e3)}</p>`:''}
     <div class="row"><button class="btn gold" data-act="pd-save" ${PR.busy3?'disabled':''}>${PR.busy3?'Publication…':D.id?'Enregistrer les modifications':'Publier le devoir'}</button>${D.id?'<button class="btn ghost" data-act="pd-new">Annuler</button>':''}</div></section>
   <section class="clist">${list.length?list.map(d=>{const k=counts(d.id);return `<div class="crow" style="border-left-color:var(--${d.actif?'green':'line'})"><div class="ct"><b>${esc(d.titre)}</b><small>${esc(matCourt(d.matiere||'Mathématiques'))} · ${esc(d.classes.map(clsLab).join(', '))}${d.echeance?' · à rendre le '+esc(d.echeance):''} · ${k.n} copie${k.n>1?'s':''} · ${k.ok} corrigée${k.ok>1?'s':''}${d.actif?'':' · <b>fermé</b>'}${PR.me&&PR.me.admin&&d.par?' · '+esc(d.par):''}</small></div>
