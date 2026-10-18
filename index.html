@@ -4204,6 +4204,13 @@ function feedbackHTML(q,s){
     ${bulle('Correction Profdemaths 2.0',corrHTML(q))}</div>`;
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CGU_TXT=`<h2>Conditions d'utilisation</h2>
+<p><b>Profdemaths 2.0</b> est une application créée et éditée par <b>Racine Thiam</b> (M. Thiam), professeur de mathématiques à Dakar. Les cours, exercices, quiz, évaluations, sujets, corrigés, illustrations, le nom « Profdemaths 2.0 », le logo et le code de l'application sont protégés par le droit d'auteur. © 2026 Racine Thiam. Tous droits réservés.</p>
+<p><b>Usage autorisé.</b> L'application est réservée à l'usage personnel des élèves inscrits et au travail des professeurs autorisés, dans le cadre scolaire.</p>
+<p><b>Usage interdit.</b> Il est interdit de copier, reproduire, télécharger en masse, revendre, publier ailleurs, adapter ou faire recréer par un outil (y compris une intelligence artificielle) tout ou partie de l'application ou de ses contenus, sans l'accord écrit de l'auteur.</p>
+<p><b>Compte.</b> Ton pseudo et ton code secret sont personnels : ne les donne à personne. Tes résultats sont envoyés à tes professeurs pour suivre ta progression ; ils ne sont pas rendus publics (le classement n'affiche que les pseudos).</p>
+<p><b>Contact.</b> Pour toute autorisation ou question : M. Thiam, via le collège.</p>`;
+function openCgu(){const m=document.getElementById('modal');m.innerHTML=`<div class="modal-card wide" role="dialog" aria-modal="true" aria-label="Conditions d'utilisation" style="max-height:85vh;overflow:auto;display:flex;flex-direction:column;gap:10px">${CGU_TXT}<button class="btn" data-act="close-modal">Fermer</button></div>`;m.hidden=false}
 function profilForm(why){
   const p=S.draft||DB.profil||{prenom:'',nom:'',classe:'',niveau:S.niv||''};
   const old=DB.profil,locked=!!(old&&old.etab);
@@ -4222,6 +4229,7 @@ function profilForm(why){
     <p class="small">Ton <b>pseudo</b> est unique : personne d'autre ne peut le prendre. Retiens bien ton <b>code secret</b> : il te permet de retrouver ton suivi sur un autre téléphone.</p>
     ${S.err?`<p class="err">${S.err}</p>`:''}${S.busy?`<p class="small"><b>Vérification du pseudo…</b></p>`:''}
     <p class="small">Ton nom et ta classe apparaissent sur tes fiches de résultats. ${trackOn()?"Tes notes aux quiz et aux évaluations sont aussi envoyées à ton professeur pour suivre ta progression.":"Ils restent sur ce téléphone."}</p>
+    ${DB.profil?'':`<label class="small" style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="pf-cgu" ${S.cgu?'checked':''} onchange="S.cgu=this.checked" style="margin-top:3px"> <span>J'accepte les <button class="linkbtn" data-act="cgu" type="button">conditions d'utilisation</button> de Profdemaths 2.0.</span></label>`}
     <div class="row"><button class="btn gold" data-act="save-profil">Enregistrer</button>${DB.profil?`<button class="btn ghost" data-act="cancel-profil">Annuler</button>`:''}</div>
   </section>`;
 }
@@ -4275,6 +4283,7 @@ function homeHTML(){
     <p class="small">Scanne le QR code, ou envoie le lien par WhatsApp à tes camarades.</p>
     <div class="row"><button class="btn" data-act="share">Partager</button><button class="btn ghost" data-act="copy-link">Copier le lien</button></div></div></section>
   <p class="foot">Profdemaths 2.0 · « Des maths, des méthodes et des valeurs pour construire la réussite. »</p>
+  <p class="foot">© 2026 Racine Thiam · Profdemaths 2.0 · Tous droits réservés. Reproduction interdite. <button class="linkbtn" data-act="cgu">Conditions d'utilisation</button></p>
   <p class="foot"><button class="linkbtn" data-act="prof-open">Espace professeur</button></p>`;
 }
 function levelHTML(){
@@ -4616,7 +4625,9 @@ const SJT_LAB={D1S1:'Devoir n°1 · premier semestre',D2S1:'Devoir n°2 · premi
 const SJ={open:null};
 function sjProf(){return !!(typeof PR!=='undefined'&&PR.rows)}
 function sjDispo(k){const m=+k,an=m>=9?2026:2027;return Date.now()>=new Date(an,m-1,1).getTime()}
-function sjImg(src,alt){return `<img class="copie-img" loading="lazy" src="${src}" alt="${alt}" data-act="zoom" style="width:100%;border-radius:10px;border:1px solid var(--line);background:#fff">`}
+function sjMarque(){const P=DB.profil,who=P&&P.pseudo?'@'+P.pseudo:(typeof PR!=='undefined'&&PR.me&&PR.me.nom)||'';return 'Profdemaths 2.0 · © R. Thiam'+(who?' · '+who:'')}
+function sjImg(src,alt){const t=esc(sjMarque());return `<div style="position:relative;overflow:hidden;border-radius:10px"><img class="copie-img" loading="lazy" src="${src}" alt="${alt}" data-act="zoom" style="width:100%;display:block;border-radius:10px;border:1px solid var(--line);background:#fff">
+  <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-around;align-items:center;transform:rotate(-28deg) scale(1.3)">${[1,2,3,4].map(()=>`<span style="font:700 15px/1 var(--display,sans-serif);color:rgba(15,37,82,.13);white-space:nowrap">${t} · ${t}</span>`).join('')}</div></div>`}
 function sjPages(base,n){let h='';for(let i=1;i<=n;i++)h+=sjImg(base+'-'+i+'.jpg','Page '+i);return `<div style="display:flex;flex-direction:column;gap:10px">${h}<p class="small">Touche une page pour l'agrandir.</p></div>`}
 function sujetsBankHTML(n,prof){const T=SJT[n]||{},M=(typeof MONTHLY!=='undefined'&&MONTHLY[n])||[];
   const row=(lab,btns,body)=>`<div style="display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--line);padding:10px 0"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${lab}</b><div class="row" style="gap:6px;flex-wrap:wrap">${btns}</div></div>${body}</div>`;
@@ -5306,6 +5317,7 @@ function gateHomeHTML(){
   ${S.role!=='eleve'?roleCardHTML():!trackOn()?profilForm('Avant de commencer, présente-toi.'):!S.eauth?eleveChoixHTML():S.eauth==='login'?eleveLoginHTML():profilForm('Crée ton compte : ton nom apparaîtra sur tes fiches de résultats.')}
   <section class="card"><p class="eyebrow">🔒 Réservé aux élèves inscrits</p><p class="small">Les cours, les exercices, les quiz, les évaluations et le classement s'ouvrent dès que tu as ton compte.</p></section>
   <p class="foot">Profdemaths 2.0 · « Des maths, des méthodes et des valeurs pour construire la réussite. »</p>
+  <p class="foot">© 2026 Racine Thiam · Profdemaths 2.0 · Tous droits réservés. Reproduction interdite. <button class="linkbtn" data-act="cgu">Conditions d'utilisation</button></p>
   <p class="foot"><button class="linkbtn" data-act="prof-open">Espace professeur</button></p>`}
 
 /* test de positionnement déjà passé (sur un autre téléphone) : on reprend le résultat du serveur */
@@ -5337,6 +5349,7 @@ document.addEventListener('click',e=>{
   if(!acces()&&/^(level|open|rank|posi|defis|guide|gs|devoirs|tab|quiz-start|eval-start|rv-open|rv-blanc|skill|next)$/.test(a)){S.view='home';render();window.scrollTo(0,0);toast("Crée ton compte ou connecte-toi d'abord.");return}
   if(a&&/^(pf-etab|cp-etab|cp-save|devoirs$|zoom$|dv-|pt-|pl-|pc-|pd-|pp-)/.test(a)){v2Act(a,b);return}
   if(a==='posi'){if(DB.profil&&DB.profil.niveau&&DB.profil.niveau!==b.dataset.n){toast('Ton test de positionnement est celui de '+DB.profil.niveau+'.');return}S.view='posi';S.niv=b.dataset.n;PS.review=false;PS.run=null;render();window.scrollTo(0,0);return}
+  if(a==='cgu'){openCgu();return}
   if(a==='sujets'){if(!canNiv(b.dataset.n)){nivLock(b.dataset.n);return}S.view='sujets';S.niv=b.dataset.n;SJ.open=null;render();window.scrollTo(0,0);return}
   if(a==='sj-open'){SJ.open=SJ.open===b.dataset.k?null:b.dataset.k;render();return}
   if(a==='sj-niv'){PR.sjNiv=b.dataset.n;SJ.open=null;render();return}
@@ -5356,6 +5369,7 @@ document.addEventListener('click',e=>{
   else if(a==='cancel-profil'){S.editProfil=false}
   else if(a==='save-profil'){
     if(S.busy)return;
+    if(!DB.profil&&!S.cgu){S.err="Coche la case pour accepter les conditions d'utilisation.";render();return}
     const D=grabDraft(),old=DB.profil,t=x=>String(x==null?'':x).trim();
     const P={prenom:t(D.prenom),nom:t(D.nom),niveau:t(D.niveau)||'6e',pseudo:t(D.pseudo).toLowerCase()};
     const pin=t(D.pin);
