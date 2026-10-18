@@ -3671,7 +3671,7 @@ function checkCompte(){const P=DB.profil;if(!trackOn()||!P||!P.pseudo||!navigato
   window[cb]=d=>{delete window[cb];sc.remove();if(d&&d.ok&&d.supprime&&DB.profil&&DB.profil.pseudo===P.pseudo){DB.queue=(DB.queue||[]).filter(x=>x.pseudo!==P.pseudo);resetPhone('Ce compte a été supprimé par M. Thiam.');return}
     if(d&&d.ok&&d.trouve&&DB.profil&&DB.profil.pseudo===P.pseudo)applySrv(d)};
   sc.onerror=()=>{delete window[cb];sc.remove()};
-  sc.src=TRACK_URL+'?action=etat&pseudo='+encodeURIComponent(P.pseudo)+'&callback='+cb;document.body.appendChild(sc)}
+  sc.src=TRACK_URL+'?action=etat&pseudo='+encodeURIComponent(P.pseudo)+(!DB.histAt||Date.now()-DB.histAt>432e5?'&hist=1':'')+'&callback='+cb;document.body.appendChild(sc)}
 setTimeout(checkCompte,3500);
 setTimeout(flushQueue,1500);
 
@@ -4507,6 +4507,7 @@ function applySrv(r,silent){const P=DB.profil;if(!P||!r)return false;let ch=fals
   if(r.etab&&(r.ecole||'')!==(P.ecole||'')){P.ecole=r.ecole||'';ch=true}
   if(r.etab&&typeof r.verifie==='boolean'&&r.verifie!==P.verifie){P.verifie=r.verifie;ch=true}
   if(ch){save();if(!silent)toast('Ta classe : '+clsLab(P.classe));softRender();loadDevoirs(true)}
+  if(typeof histDuServeur==='function'&&histDuServeur(r))softRender();
   if(typeof posiDuServeur==='function'&&posiDuServeur(r)){if(S.view==='posi'&&!PS.run){S.view='home'}softRender()}
   return ch}
 function completeEtab(ch){const P=DB.profil;if(!P||!P.pseudo)return;
@@ -5258,7 +5259,7 @@ function elAct(a){
     api({action:'connexion',pseudo:ps,pin,uid:uid()}).then(r=>{S.elBusy=false;
       if(r.ok&&r.retour){DB.profil={prenom:r.prenom||'',nom:r.nom||'',niveau:r.niveau,classe:String(r.classe||'').toUpperCase(),pseudo:ps,ok:true,etab:r.etab||'',ecole:r.ecole||''};
         if(typeof r.verifie==='boolean')DB.profil.verifie=r.verifie;if(!DB.profil.etab)delete DB.profil.etab;
-        save();posiDuServeur(r);FM.elg=null;S.eauth=null;S.view='home';toast('Bon retour, '+(r.prenom||ps)+' !');render();window.scrollTo(0,0);loadDevoirs(true);return}
+        save();posiDuServeur(r);histDuServeur(r);FM.elg=null;S.eauth=null;S.view='home';toast('Bon retour, '+(r.prenom||ps)+' !');render();window.scrollTo(0,0);loadDevoirs(true);return}
       S.elErr=r.pris?'Code secret incorrect.':r.erreur==='Action inconnue.'?'La connexion sera disponible très bientôt. En attendant, touche « Créer un compte » et reprends ton pseudo et ton code secret.':(r.erreur||'Connexion impossible.');render()});return}
 }
 
@@ -5281,6 +5282,12 @@ function posiDuServeur(r){const P=DB.profil,x=r&&r.posi;if(!P||!x||typeof POSI==
   vides.forEach((k,i)=>{const v=Math.min(5,Math.max(4,Math.round(reste/(vides.length-i))));doms[k]=v;reste-=v});
   DB.posi=DB.posi||{};DB.posi[n]={score:x.score,note20:Math.round(x.score/25*20*2)/2,doms,answers:[],eleve:eleve(),classe:P.classe||n,date:x.date||'',duree:'',attempt:x.tentative||1,serveur:true};
   save();return true}
+
+/* quiz et évaluations déjà faits (sur un autre téléphone) : on reprend l'historique du serveur */
+function histDuServeur(r){const H=r&&r.hist;if(!H||!DB.profil)return false;let ch=false;
+  Object.entries(H.q||{}).forEach(([cid,b])=>{if(!REG[cid])return;const x=rec(cid);if(x.best===null||b>x.best){x.best=b;ch=true}});
+  Object.entries(H.e||{}).forEach(([cid,L])=>{if(!REG[cid])return;const x=rec(cid);for(let i=x.evals.length;i<L.length;i++){x.evals.push({note:L[i][0],items:[],attempt:i+1,eleve:eleve(),classe:DB.profil.classe||'',date:L[i][1],duree:'',serveur:true});ch=true}});
+  DB.histAt=Date.now();save();return ch}
 
 /* ---------- actions ---------- */
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')e.target.hidden=true});
@@ -5339,7 +5346,7 @@ document.addEventListener('click',e=>{
       if(!r.ok){S.busy=false;S.err=r.erreur||"Ce pseudo n'est pas disponible.";render();return}
       if(r.niveau&&ORD.includes(r.niveau)){P.niveau=r.niveau;if(r.classe)P.classe=String(r.classe).toUpperCase()}
       if(r.etab){P.etab=r.etab;P.ecole=r.ecole||'';if(typeof r.verifie==='boolean')P.verifie=r.verifie}
-      if(r.posi){DB.profil=P;posiDuServeur(r)}
+      if(r.posi||r.hist){DB.profil=P;posiDuServeur(r);histDuServeur(r)}
       const besoin=r.retour&&!r.etab;
       if(besoin){P.etab='';delete P.etab}
       finish(true);
