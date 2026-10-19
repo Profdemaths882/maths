@@ -3689,7 +3689,7 @@ function loadProf(code,remember){
     if(!d||!d.ok){PR.err=(d&&d.erreur)||"Accès refusé.";try{localStorage.removeItem('pdm_prof_code')}catch(e){}}
     else{const H=d.entetes||COLS;PR.rows=d.lignes.map(l=>{const o={};H.forEach((h,i)=>o[h]=l[i]);o.Classe=normCl(o.Classe);o.n20=parseFloat(String(o['Note /20']).replace(',','.'))||0;
       const [dd,mm,yy]=String(o.Date).split('/');o.ts=new Date(+yy,+mm-1,+dd).getTime()||0;return o});
-      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:normCl(x[4]),le:x[5],vu:x[6],etab:x[7]||'',ecole:x[8]||'',vf:x[9]==='Oui'}));PR.feuille=d.feuille||'';PR.me=d.moi||{admin:true,nom:'',classes:[]};PR.devoirs=d.devoirs||[];PR.copies=d.copies||[];PR.profs=d.profs||null;PR.dossier=d.dossier||'';PR.remed=d.remed||[];PR.prog=d.prog||[];PR.ctrl=d.controles||[];PR.codes=d.codes||{};PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
+      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:normCl(x[4]),le:x[5],vu:x[6],etab:x[7]||'',ecole:x[8]||'',vf:x[9]==='Oui'}));PR.feuille=d.feuille||'';PR.me=d.moi||{admin:true,nom:'',classes:[]};PR.devoirs=d.devoirs||[];PR.copies=d.copies||[];PR.profs=d.profs||null;PR.dossier=d.dossier||'';PR.remed=d.remed||[];PR.prog=d.prog||[];PR.debloc=d.debloc||[];PR.ctrl=d.controles||[];PR.codes=d.codes||{};PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
     done()};
   s.onerror=()=>{clearTimeout(timer);PR.err="Impossible de joindre le serveur de suivi.";done()};
   s.src=TRACK_URL+'?code='+encodeURIComponent(code)+'&callback='+cb;document.body.appendChild(s);
@@ -4120,6 +4120,31 @@ function chapInfo(cid){const [niv,code]=cid.split('-');if(REG[cid]&&REG[cid].bla
   const L=LV[niv],k=L.chaps.findIndex(c=>c[0]===code),c=L.chaps[k];
   return{id:cid,niv,code,n:k+1,titre:c[1],geo:c[2]==='geo',mois:c[3],tag:`${niv} · Chapitre ${k+1} · Activité ${c[2]==='geo'?'géométrique':'numérique'}`}}
 const ready=cid=>!!REG[cid]&&!REG[cid].monthly&&!REG[cid].blanc;
+/* ---------- verrou des chapitres : l'élève n'avance pas plus vite que sa classe ----------
+   Ouverts : les chapitres de son niveau jusqu'au dernier marqué « En cours » ou « Terminé » par le professeur
+   (à défaut de marque : jusqu'au chapitre prévu cette semaine par la progression harmonisée),
+   ceux qu'il a déjà commencés, et ceux que le professeur lui a accordés. Les niveaux d'avant restent libres. */
+const CHL={prog:null,debloc:{},busy:''};
+try{const c=JSON.parse(localStorage.getItem('pdm_chl')||'null');if(c){CHL.prog=c.prog||null;CHL.debloc=c.debloc||{}}}catch(e){}
+function chlSave(){try{localStorage.setItem('pdm_chl',JSON.stringify({prog:CHL.prog,debloc:CHL.debloc}))}catch(e){}}
+function chapOuvert(cid){const p=DB.profil;if(!p||!p.niveau)return true;try{if(profCode()||(PR&&PR.code))return true}catch(e){}
+  const [niv,code]=cid.split('-');if(niv!==p.niveau)return true;
+  const L=LV[niv];if(!L)return true;const idx=L.chaps.findIndex(c=>c[0]===code);if(idx<0)return true;
+  if(CHL.debloc[cid]==='Accordé')return true;
+  const r=DB.ch[cid];if(r&&(r.tot||r.best!==null||(r.evals&&r.evals.length)))return true;
+  const pos=c=>L.chaps.findIndex(z=>z[0]===c);let lim=-1;
+  if(CHL.prog&&CHL.prog.length)CHL.prog.forEach(x=>{const k=pos(String(x.chap));if(k>lim)lim=k});
+  else{const t=today0();planDe(niv).forEach(c=>{if(c.deb<=t){const k=pos(c.code);if(k>lim)lim=k}})}
+  return idx<=Math.max(lim,0)}
+function chlBtn(id){const st=CHL.debloc[id];if(CHL.busy===id)return `<span class="pill soon">Envoi…</span>`;
+  if(st==='En attente')return `<span class="pill soon">🔒 Demande envoyée</span>`;
+  return `<button class="btn ghost sm" data-act="chl-ask" data-c="${id}">🔒 ${st==='Refusé'?'Redemander':'Demander'}</button>`}
+function deblocCardHTML(){const L=(PR.debloc||[]).filter(d=>d.statut==='En attente');if(!L.length)return '';
+  return `<section class="card noprint" style="border-top:6px solid var(--gold);display:flex;flex-direction:column;gap:10px"><p class="eyebrow">Demandes de déblocage</p>
+    <h2 style="margin:0">${L.length} demande${L.length>1?'s':''} en attente</h2>
+    <p class="small">Ces élèves veulent ouvrir un chapitre que leur classe n'a pas encore commencé. Pour ouvrir un chapitre à toute une classe, marquez-le « En cours » dans l'onglet Progression.</p>
+    ${L.map(d=>{const c=chapInfo(String(d.chap));return `<div class="crow"><div class="ct"><b>${esc(d.eleve||d.pseudo)} · ${esc(clsLab(d.classe))}</b><small>${esc(c.titre||d.chap)} (${esc(String(d.chap).split('-')[0])}) · demandé le ${esc(d.le)}</small></div>
+      <div class="row" style="gap:6px"><button class="btn sm" data-act="chl-dec" data-id="${esc(d.id)}" data-v="Accordé">Accorder</button><button class="btn ghost sm" data-act="chl-dec" data-id="${esc(d.id)}" data-v="Refusé">Refuser</button></div></div>`}).join('')}</section>`}
 /* ---------- évaluations formatives mensuelles ---------- */
 const MONTHLY={
  '6e':[['11','novembre',['DEC','ADD','SOU','GEO','RAN']],['12','décembre',['RAN','CER','MUL']],['01','janvier',['MUL','PER','DIV']],['02','février',['DIV','SYM','ORG']],['03','mars',['ORG','ANG','PRO','POL']],['04','avril',['POL','REL','AIR']],['05','mai',['AIR','ESP','REP']],['06','juin',null]],
@@ -4305,12 +4330,14 @@ function homeHTML(){
 }
 function levelHTML(){
   const n=S.niv,L=LV[n],s=lvlStats(n);
-  const rows=L.chaps.map((c,k)=>{const id=n+'-'+c[0],r=rec(id),ok=ready(id),last=r.evals[r.evals.length-1];
+  if(DB.profil&&DB.profil.niveau===n)setTimeout(()=>loadDevoirs(),0);
+  const rows=L.chaps.map((c,k)=>{const id=n+'-'+c[0],r=rec(id),ok=ready(id),op=chapOuvert(id),last=r.evals[r.evals.length-1];
     let info=`Prévu en ${c[3]}`;
-    if(ok){const parts=[];parts.push(r.best===null?'Quiz à faire':`Quiz ${q20(r.best)}/20`);if(last){const [men,cls]=mentionOf(last.note);parts.push(`<span class="pill ${cls}">${last.note}/20</span>`)}info=parts.join(' · ')}
+    if(ok&&!op){const st=CHL.debloc[id];info=st==='Refusé'?'🔒 Demande refusée : il s\'ouvrira quand ta classe y arrivera':st==='En attente'?'🔒 En attente de la réponse de ton professeur':'🔒 S\'ouvre quand ta classe y arrive'}
+    else if(ok){const parts=[];parts.push(r.best===null?'Quiz à faire':`Quiz ${q20(r.best)}/20`);if(last){const [men,cls]=mentionOf(last.note);parts.push(`<span class="pill ${cls}">${last.note}/20</span>`)}info=parts.join(' · ')}
     return `<div class="crow ${c[2]==='geo'?'geo':''} ${ok?'':'soon'}"><span class="no">${k+1}</span>
       <div class="ct"><b>${c[1]}</b><small>${c[2]==='geo'?'Géométrie':'Numérique'} · ${info}</small></div>
-      ${ok?`<button class="btn" data-act="open" data-c="${id}">${r.tot||r.best!==null?'Continuer':'Commencer'}</button>`:`<span class="pill soon">Bientôt</span>`}</div>`}).join('');
+      ${ok&&op?`<button class="btn" data-act="open" data-c="${id}">${r.tot||r.best!==null?'Continuer':'Commencer'}</button>`:ok?chlBtn(id):`<span class="pill soon">Bientôt</span>`}</div>`}).join('');
   const any=L.chaps.some(c=>rec(n+'-'+c[0]).evals.length);
   return `<div class="chap-head"><p class="eyebrow">Mathématiques · ${L.nom}</p><h1>Programme de ${n}</h1>
     <p class="small">${s.tot} chapitres dans l'ordre de la progression · ${s.av} disponible${s.av>1?'s':''} aujourd'hui, les autres arrivent au fil des cours.</p></div>
@@ -4584,7 +4611,7 @@ function loadDevoirs(force){const P=DB.profil;if(!trackOn()||!P||!P.pseudo||!P.c
   const done=()=>{DV.loading=false;delete window[cb];s.remove();if(S.view==='devoirs'||S.view==='home')softRender()};
   const timer=setTimeout(()=>{DV.err="Pas de réponse du serveur : voici les derniers devoirs chargés.";done()},20000);
   window[cb]=d=>{clearTimeout(timer);DV.at=Date.now();
-    if(d&&d.ok){DV.list=d.devoirs||[];(DV.list||[]).forEach(x=>{if(x.imgUrl)DV.fig[x.id]=x.imgUrl});DV.copies={};(d.copies||[]).forEach(c=>DV.copies[c.devoir]=c);DV.remed=d.remed||null;DV.ctrl=d.controles||[];
+    if(d&&d.ok){DV.list=d.devoirs||[];(DV.list||[]).forEach(x=>{if(x.imgUrl)DV.fig[x.id]=x.imgUrl});DV.copies={};(d.copies||[]).forEach(c=>DV.copies[c.devoir]=c);DV.remed=d.remed||null;DV.ctrl=d.controles||[];if(Array.isArray(d.prog))CHL.prog=d.prog;if(d.debloc&&typeof d.debloc==='object')CHL.debloc=d.debloc;chlSave();
       try{localStorage.setItem('pdm_devoirs',JSON.stringify({list:DV.list,copies:DV.copies,remed:DV.remed,ctrl:DV.ctrl}))}catch(e){}}
     else DV.err=(d&&d.erreur)||"Devoirs indisponibles pour le moment.";done()};
   s.onerror=()=>{clearTimeout(timer);DV.err=navigator.onLine===false?"Pas de connexion : voici les derniers devoirs chargés.":"Impossible de joindre le serveur.";done()};
@@ -4833,6 +4860,7 @@ function v2Act(a,b){
   if(a==='pl-code-no'){PR.codeAsk=null;render();return}
   if(a==='pl-code'){const c=b.dataset.c;PR.codeAsk=null;profOp({op:'codeClasse',classe:c}).then(r=>{if(r.ok){PR.codes=r.codes||PR.codes;toast('Nouveau code pour '+clsLab(c)+' : '+r.code)}else toast(r.erreur);render()});return}
   if(a==='pl-codecopy'){const c=b.dataset.c;copyText(`Classe de ${clsLab(c)} · ${ECOLE}\nPour t'inscrire sur Profdemaths 2.0 (${APP_URL}) : choisis « Élève du ${ECOLE} », ta classe ${c.slice(-1)}, et entre le code de la classe : ${PR.codes[c]}\nNe donne pas ce code à des élèves d'autres classes.`,'Message copié : envoyez-le dans le groupe WhatsApp de la classe');return}
+  if(a==='chl-dec'){const id=b.dataset.id,st=b.dataset.v;profOp({op:'deblocage',id,statut:st}).then(r=>{if(r.ok){PR.debloc=r.debloc||PR.debloc;toast(st==='Accordé'?'Chapitre ouvert pour cet élève':'Demande refusée')}else toast(r.erreur||'Enregistrement impossible.');render()});return}
   if(a==='pl-valider'){const p=b.dataset.p;profOp({op:'valider',pseudo:p}).then(r=>{if(r.ok){const x=(PR.ins||[]).find(y=>y.p===p);if(x)x.vf=true;toast('Élève validé')}else toast(r.erreur);render()});return}
   if(a==='pl-cl'){PR.lcl=b.dataset.c;if(PR.tab!=='listes'){PR.tab='listes';window.scrollTo(0,0)}render();return}
   if(a==='pl-print'){window.print();return}
@@ -4894,7 +4922,7 @@ function profAuthHTML(){const t=PR.auth||(profCode()?'code':'connexion');
       <label>Mot de passe<input type="password" data-f="pa.mdp" autocomplete="current-password" value="${esc(fval('pa.mdp'))}"></label></div>
     <label class="small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pr-rem" checked> Rester connecté sur cet appareil</label>
     <button class="btn gold" data-act="pa-login" ${PR.loading?'disabled':''}>${PR.loading?'Connexion…':'Se connecter'}</button>
-    <p class="small">Pas encore de compte ? <button class="linkbtn" data-act="pa-tab" data-t="inscription">Crée ton compte professeur</button>.</p>`;
+    <p class="small">Pas encore de compte ? <button class="linkbtn" data-act="pa-tab" data-t="inscription">Crée ton compte professeur</button>.</p>${deblocCardHTML()}`;
   else if(t==='inscription')body=`<div class="form">
       <label>Prénom<input data-f="pi.prenom" value="${esc(I.prenom||'')}" autocomplete="given-name"></label>
       <label>Nom<input data-f="pi.nom" value="${esc(I.nom||'')}" autocomplete="family-name"></label>
@@ -5463,7 +5491,11 @@ document.addEventListener('click',e=>{
   else if(a==='prof-back'){PR.eleve=null}
   else if(a==='guide'){S.view='guide';S.niv=b.dataset.n;S.gi=null;window.scrollTo(0,0)}
   else if(a==='gs'){S.gi=b.dataset.i===''?null:+b.dataset.i;window.scrollTo(0,0)}
-  else if(a==='open'){const nv=b.dataset.c.split('-')[0];if(!canNiv(nv)){nivLock(nv);return}if(DB.profil&&DB.profil.niveau===nv&&POSI[nv]&&!posiRec(nv)){S.view='posi';S.niv=nv;PS.run=null;toast('Passe d\'abord ton test de positionnement : il te place dans ton groupe de besoin.')}else{S.view='chap';S.cid=b.dataset.c;S.niv=nv;S.tab='cours'}}
+  else if(a==='chl-ask'){const cid=b.dataset.c,P=DB.profil;if(!P||!P.pseudo||!trackOn()){toast('Connecte-toi avec ton pseudo pour envoyer la demande à ton professeur.');return}
+    if(CHL.busy)return;CHL.busy=cid;softRender();
+    api({action:'demandeChapitre',pseudo:P.pseudo,chap:cid}).then(r=>{CHL.busy='';if(r&&r.ok){if(r.debloc)CHL.debloc=r.debloc;else CHL.debloc[cid]=r.statut||'En attente';chlSave();toast(r.statut==='Accordé'?'Chapitre ouvert !':'Demande envoyée à ton professeur')}else toast((r&&r.erreur)==='Action inconnue.'?'Les demandes ne sont pas encore activées : réessaie demain.':(r&&r.erreur)||'Demande impossible pour le moment.');render()})}
+  else if(a==='open'){const nv=b.dataset.c.split('-')[0];if(!canNiv(nv)){nivLock(nv);return}
+    if(!chapOuvert(b.dataset.c)){toast('Ce chapitre s\'ouvrira quand ta classe y arrivera. Pour l\'ouvrir avant, fais la demande dans la liste des chapitres.');S.view='level';S.niv=nv;render();window.scrollTo(0,0);return}if(DB.profil&&DB.profil.niveau===nv&&POSI[nv]&&!posiRec(nv)){S.view='posi';S.niv=nv;PS.run=null;toast('Passe d\'abord ton test de positionnement : il te place dans ton groupe de besoin.')}else{S.view='chap';S.cid=b.dataset.c;S.niv=nv;S.tab='cours'}}
   else if(a==='tab'){S.tab=b.dataset.t;if(S.tab==='eval'&&s.sheet&&!(s.eval&&s.eval.done))s.sheet=null}
   else if(a==='rank'){S.view='rank';window.scrollTo(0,0);loadRank();return}
   else if(a==='rk-per'){RK.per=b.dataset.k}
