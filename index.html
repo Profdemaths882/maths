@@ -4659,7 +4659,7 @@ function profClasses(){const me=PR.me||{admin:true,classes:[]};if(!me.admin)retu
 
 /* ---------- banque de sujets : devoirs et compositions types (sujet + corrigé), sujets des évaluations du mois ---------- */
 const SJT={"3e": {"CS1": {"s": 1, "c": 2}, "CS2": {"s": 1, "c": 2}, "D1S1": {"s": 1, "c": 2}, "D1S2": {"s": 2, "c": 3}, "D2S1": {"s": 1, "c": 2}, "D2S2": {"s": 1, "c": 2}}, "4e": {"CS1": {"s": 1, "c": 2}, "CS2": {"s": 1, "c": 2}, "D1S1": {"s": 1, "c": 2}, "D1S2": {"s": 1, "c": 2}, "D2S1": {"s": 1, "c": 2}, "D2S2": {"s": 1, "c": 2}}, "5e": {"CS1": {"s": 1, "c": 2}, "CS2": {"s": 1, "c": 2}, "D1S1": {"s": 1, "c": 2}, "D1S2": {"s": 1, "c": 2}, "D2S1": {"s": 1, "c": 2}, "D2S2": {"s": 1, "c": 2}}, "6e": {"CS1": {"s": 1, "c": 2}, "CS2": {"s": 1, "c": 2}, "D1S1": {"s": 1, "c": 2}, "D1S2": {"s": 1, "c": 2}, "D2S1": {"s": 1, "c": 2}, "D2S2": {"s": 1, "c": 2}}};
-const EXAMS={"3e":[{id:'BFEM2019',lab:'BFEM 2019',s:2,c:3}]};
+const EXAMS={"3e":[{id:'BFEM2019',lab:'BFEM 2019',s:2,c:3},{id:'COMPO2DK',lab:'Composition du 2nd semestre · IA de Dakar (sujet 2)',s:2,c:2}]};
 const SJT_LAB={D1S1:'Devoir n°1 · premier semestre',D2S1:'Devoir n°2 · premier semestre',CS1:'Composition du premier semestre',D1S2:'Devoir n°1 · second semestre',D2S2:'Devoir n°2 · second semestre',CS2:'Composition du second semestre'};
 const SJ={open:null};
 function sjProf(){return !!(typeof PR!=='undefined'&&PR.rows)}
@@ -4680,7 +4680,7 @@ function sujetsBankHTML(n,prof){const T=SJT[n]||{},M=(typeof MONTHLY!=='undefine
     return row('Évaluation du mois · '+lab,ok?tb(id,'m','📄 Sujet (partie II)'):`<span class="pill soon">Disponible le 1er ${esc(lab)}</span>`,SJ.open===id+':m'&&ok?sjImg('sujets/'+id+'.jpg','Sujet de '+esc(lab)):'')}).join('');
   return `<section class="card" style="display:flex;flex-direction:column;gap:4px"><p class="eyebrow">Devoirs et compositions types · ${n}</p>
     <p class="small">Au format officiel, notés sur 20, avec le corrigé rédigé et le barème. Entraîne-toi d'abord sur le sujet, sans regarder le corrigé.</p>${dev||'<p class="small">Aucun sujet pour ce niveau.</p>'}</section>
-  ${EX.length?`<section class="card" style="display:flex;flex-direction:column;gap:4px"><p class="eyebrow">Épreuves du BFEM et des concours</p>
+  ${EX.length?`<section class="card" style="display:flex;flex-direction:column;gap:4px"><p class="eyebrow">Épreuves officielles : BFEM, concours et compositions</p>
     <p class="small">Sujets officiels retapés, avec un corrigé détaillé Profdemaths 2.0 (raisonnement, figures et barème). Fais l'épreuve en 2 heures, comme le jour de l'examen.</p>${exa}</section>`:''}
   <section class="card" style="display:flex;flex-direction:column;gap:4px"><p class="eyebrow">Évaluations du mois · partie II (exercices rédigés)</p>
     <p class="small">${prof?"Vous voyez tous les sujets de l'année. Les élèves ne voient chaque sujet qu'à partir du 1er du mois.":"Chaque sujet s'ouvre le 1er du mois. Tu le traites sur ta copie, puis tu envoies la photo depuis l'évaluation du mois."}</p>${mois}</section>`}
