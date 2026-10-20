@@ -3645,15 +3645,22 @@ function track(o){
   if(DB.queue.length>400)DB.queue.splice(0,DB.queue.length-400);
   save();flushQueue();
 }
-let flushing=false;
+let flushing=false,flushWait=0;
+/* envoi des résultats : on ne retire un lot de la file que si le serveur confirme l'avoir enregistré ;
+   sinon on réessaie plus tard (1 s, 2 s, 4 s… jusqu'à 5 min). Chaque résultat garde t + uid : le serveur ignore les doublons. */
 async function flushQueue(){
   if(!trackOn()||flushing||!DB.queue||!DB.queue.length||navigator.onLine===false)return;
-  flushing=true;const batch=DB.queue.slice(0,40);
+  flushing=true;const batch=DB.queue.slice(0,25);let ok=false;
+  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),30000);
   try{
-    await fetch(TRACK_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(batch)});
-    DB.queue.splice(0,batch.length);save();
-  }catch(e){flushing=false;return}
-  flushing=false;if(DB.queue.length)setTimeout(flushQueue,800);
+    const r=await fetch(TRACK_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(batch),signal:ctl.signal});
+    const j=await r.json().catch(()=>null);ok=!!(j&&j.ok);
+  }catch(e){ok=false}
+  clearTimeout(tm);
+  if(ok){DB.queue.splice(0,batch.length);save();flushWait=0}
+  else flushWait=Math.min(flushWait?flushWait*2:1000,300000);
+  flushing=false;
+  if(DB.queue.length)setTimeout(flushQueue,ok?600:flushWait+Math.random()*1000);
 }
 async function registerPseudo(P,pin){
   try{
