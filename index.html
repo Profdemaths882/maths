@@ -3696,7 +3696,7 @@ function loadProf(code,remember){
     if(!d||!d.ok){PR.err=(d&&d.erreur)||"Accès refusé.";try{localStorage.removeItem('pdm_prof_code')}catch(e){}}
     else{const H=d.entetes||COLS;PR.rows=d.lignes.map(l=>{const o={};H.forEach((h,i)=>o[h]=l[i]);o.Classe=normCl(o.Classe);o.n20=parseFloat(String(o['Note /20']).replace(',','.'))||0;
       const [dd,mm,yy]=String(o.Date).split('/');o.ts=new Date(+yy,+mm-1,+dd).getTime()||0;return o});
-      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:normCl(x[4]),le:x[5],vu:x[6],etab:x[7]||'',ecole:x[8]||'',vf:x[9]==='Oui'}));PR.feuille=d.feuille||'';PR.me=d.moi||{admin:true,nom:'',classes:[]};PR.devoirs=d.devoirs||[];PR.copies=d.copies||[];PR.profs=d.profs||null;PR.dossier=d.dossier||'';PR.remed=d.remed||[];PR.prog=d.prog||[];PR.debloc=d.debloc||[];PR.ctrl=d.controles||[];PR.codes=d.codes||{};PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
+      PR.ins=(d.inscrits||[]).map(x=>({p:String(x[0]).toLowerCase(),prenom:x[1],nom:x[2],niv:x[3],c:normCl(x[4]),le:x[5],vu:x[6],etab:x[7]||'',ecole:x[8]||'',vf:x[9]==='Oui'}));PR.feuille=d.feuille||'';PR.me=d.moi||{admin:true,nom:'',classes:[]};PR.devoirs=d.devoirs||[];PR.copies=d.copies||[];PR.profs=d.profs||null;PR.dossier=d.dossier||'';PR.remed=d.remed||[];PR.prog=d.prog||[];PR.debloc=d.debloc||[];PR.ctrl=d.controles||[];PR.codes=d.codes||{};PR.grilles=d.grilles||null;PR.code=code;if(remember){try{localStorage.setItem('pdm_prof_code',code)}catch(e){}}}
     done()};
   s.onerror=()=>{clearTimeout(timer);PR.err="Impossible de joindre le serveur de suivi.";done()};
   s.src=TRACK_URL+'?code='+encodeURIComponent(code)+'&callback='+cb;document.body.appendChild(s);
@@ -4609,7 +4609,7 @@ function completeCardHTML(){const p=DB.profil;if(!p||p.etab||!p.pseudo||p.ok===f
 
 /* ---------------- devoirs à rendre en photo (élève) ---------------- */
 const DV={list:null,copies:{},remed:null,loading:false,err:'',photos:{},busy:'',repl:{},fig:{},figBusy:'',ph:'',e:{},at:0};
-try{const c=JSON.parse(localStorage.getItem('pdm_devoirs')||'null');if(c&&c.list){DV.list=c.list;DV.copies=c.copies||{};DV.remed=c.remed||null;DV.ctrl=c.ctrl||[]}}catch(e){}
+try{const c=JSON.parse(localStorage.getItem('pdm_devoirs')||'null');if(c&&c.list){DV.list=c.list;DV.copies=c.copies||{};DV.remed=c.remed||null;DV.ctrl=c.ctrl||[];DV.evol=c.evol||null}}catch(e){}
 function loadDevoirs(force){const P=DB.profil;if(!trackOn()||!P||!P.pseudo||!P.classe||DV.loading)return;
   if(!force&&Date.now()-DV.at<60000)return;
   DV.loading=true;DV.err='';if(S.view==='devoirs')softRender();
@@ -4618,8 +4618,8 @@ function loadDevoirs(force){const P=DB.profil;if(!trackOn()||!P||!P.pseudo||!P.c
   const done=()=>{DV.loading=false;delete window[cb];s.remove();if(S.view==='devoirs'||S.view==='home')softRender()};
   const timer=setTimeout(()=>{DV.err="Pas de réponse du serveur : voici les derniers devoirs chargés.";done()},20000);
   window[cb]=d=>{clearTimeout(timer);DV.at=Date.now();
-    if(d&&d.ok){DV.list=d.devoirs||[];(DV.list||[]).forEach(x=>{if(x.imgUrl)DV.fig[x.id]=x.imgUrl});DV.copies={};(d.copies||[]).forEach(c=>DV.copies[c.devoir]=c);DV.remed=d.remed||null;DV.ctrl=d.controles||[];if(Array.isArray(d.prog))CHL.prog=d.prog;if(d.debloc&&typeof d.debloc==='object')CHL.debloc=d.debloc;chlSave();
-      try{localStorage.setItem('pdm_devoirs',JSON.stringify({list:DV.list,copies:DV.copies,remed:DV.remed,ctrl:DV.ctrl}))}catch(e){}}
+    if(d&&d.ok){DV.list=d.devoirs||[];(DV.list||[]).forEach(x=>{if(x.imgUrl)DV.fig[x.id]=x.imgUrl});DV.copies={};(d.copies||[]).forEach(c=>DV.copies[c.devoir]=c);DV.remed=d.remed||null;DV.ctrl=d.controles||[];DV.evol=d.evol||null;if(Array.isArray(d.prog))CHL.prog=d.prog;if(d.debloc&&typeof d.debloc==='object')CHL.debloc=d.debloc;chlSave();
+      try{localStorage.setItem('pdm_devoirs',JSON.stringify({list:DV.list,copies:DV.copies,remed:DV.remed,ctrl:DV.ctrl,evol:DV.evol}))}catch(e){}}
     else DV.err=(d&&d.erreur)||"Devoirs indisponibles pour le moment.";done()};
   s.onerror=()=>{clearTimeout(timer);DV.err=navigator.onLine===false?"Pas de connexion : voici les derniers devoirs chargés.":"Impossible de joindre le serveur.";done()};
   s.src=TRACK_URL+'?action=mesdevoirs&classe='+encodeURIComponent(P.classe)+'&pseudo='+encodeURIComponent(P.pseudo)+'&k='+encodeURIComponent(k)+'&callback='+cb;document.body.appendChild(s)}
@@ -5579,3 +5579,4 @@ document.addEventListener('click',e=>{
 render();
 
 </script>
+<script src="v4.js"></script>
