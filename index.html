@@ -4584,7 +4584,7 @@ function grabDraft(){const g=id=>{const e=document.getElementById(id);return e?e
   [['prenom','pf-prenom'],['nom','pf-nom'],['niveau','pf-niv'],['pseudo','pf-pseudo'],['pin','pf-pin'],['classe','pf-classe'],['ecole','pf-ecole'],['code','pf-code']].forEach(([k,id])=>{const v=g(id);if(v!==undefined)d[k]=v});
   S.draft=d;return d}
 function grabComp(){const c=S.comp||(S.comp={etab:'',classe:'',ecole:''});const g=id=>{const e=document.getElementById(id);return e?e.value:undefined};
-  const a=g('cp-classe'),b=g('cp-ecole'),k=g('cp-code');if(a!==undefined)c.classe=a;if(b!==undefined)c.ecole=b;if(k!==undefined)c.code=k;return c}
+  const a=g('cp-classe'),b=g('cp-ecole'),k=g('cp-code'),pn=g('cp-pin');if(a!==undefined)c.classe=a;if(b!==undefined)c.ecole=b;if(k!==undefined)c.code=k;if(pn!==undefined)c.pin=pn;return c}
 /* valeurs renvoyées par le serveur : la feuille Google fait foi */
 function applySrv(r,silent){const P=DB.profil;if(!P||!r)return false;let ch=false;
   if(r.niveau&&ORD.includes(r.niveau)&&r.niveau!==P.niveau){P.niveau=r.niveau;ch=true}
@@ -4597,13 +4597,13 @@ function applySrv(r,silent){const P=DB.profil;if(!P||!r)return false;let ch=fals
   if(typeof posiDuServeur==='function'&&posiDuServeur(r)){if(S.view==='posi'&&!PS.run){S.view='home'}softRender()}
   return ch}
 function completeEtab(ch){const P=DB.profil;if(!P||!P.pseudo)return;
-  api({action:'completer',pseudo:P.pseudo,etab:ch.etab,classe:ch.classe,ecole:ch.ecole||''}).then(r=>{if(r&&r.ok)applySrv(r,true)})}
+  api({action:'completer',pseudo:P.pseudo,etab:ch.etab,classe:ch.classe,ecole:ch.ecole||'',codeClasse:ch.codeClasse||'',pin:ch.pin||''}).then(r=>{if(r&&r.ok)applySrv(r,true)})}
 function completeCardHTML(){const p=DB.profil;if(!p||p.etab||!p.pseudo||p.ok===false||!trackOn()||S.editProfil)return '';
   const d=S.comp||(S.comp={etab:'',classe:'',ecole:''});
   return `<section class="card" style="display:flex;flex-direction:column;gap:14px;border-top:6px solid var(--gold)">
     <p class="eyebrow">Nouveau · complète ton profil</p>
     <p>Es-tu élève du <b>${ECOLE}</b> ? Classe enregistrée aujourd'hui : <b>${esc(clsLab(p.classe))}</b>.</p>
-    <div class="form">${etabPickHTML(d,'cp')}</div>
+    <div class="form">${etabPickHTML(d,'cp')}<label>Mon code secret (4 chiffres)<input id="cp-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" value="${esc(d.pin||'')}" placeholder="••••"></label></div>
     ${S.cpErr?`<p class="err">${esc(S.cpErr)}</p>`:''}
     <div class="row"><button class="btn gold" data-act="cp-save" ${S.cpBusy?'disabled':''}>${S.cpBusy?'Enregistrement…':'Valider'}</button></div></section>`}
 
@@ -4749,7 +4749,10 @@ function profListesHTML(){
   const remL=L.filter(x=>{const g=grp(x);return g&&g.k===1}),sans=L.filter(x=>!pos[x.p]).length,hk=/HK$/.test(cl);
   const cr=(PR.remed||[]).find(r=>r.classe===cl)||{};
   if(!FM.rm||FM.rm.cl!==cl)FM.rm={cl,creneau:cr.creneau||'',lieu:cr.lieu||'',remarque:cr.remarque||''};
-  return `<div class="chap-head"><h1>Listes des élèves</h1><p class="small">Élèves inscrits dans l'application, classe par classe, avec leur groupe au test de positionnement.</p></div>
+  return `${PR.pinRes?`<section class="card" role="alert" style="display:flex;flex-direction:column;gap:10px;border-top:6px solid var(--gold)"><p class="eyebrow">🔑 Nouveau code secret</p>
+    <p>@${esc(PR.pinRes.pseudo)} : <b style="font-size:26px;color:var(--ink);letter-spacing:4px">${esc(PR.pinRes.pin)}</b></p>
+    <p class="small">Donnez ce code à l'élève (en main propre) : il se connecte avec « Me connecter », son pseudo et ce code. L'ancien code ne marche plus.</p>
+    <div class="row"><button class="btn ghost sm" data-act="pl-pin-ok">Fermer</button></div></section>`:''}<div class="chap-head"><h1>Listes des élèves</h1><p class="small">Élèves inscrits dans l'application, classe par classe, avec leur groupe au test de positionnement.</p></div>
   <div class="skills noprint">${cls.map(c=>{const n=INS.filter(x=>x.c===c).length;return `<button class="skill ${cl===c?'on':''}" data-act="pl-cl" data-c="${c}">${esc(clsLab(c))}${n?' · '+n:''}</button>`}).join('')}</div>
   <section class="card printzone" style="display:flex;flex-direction:column;gap:10px">
     <p class="eyebrow">${esc(ECOLE)} · Mathématiques · 2026-2027</p>
@@ -4760,7 +4763,7 @@ function profListesHTML(){
     ${!hk&&L.some(x=>!x.vf)?`<p class="small noprint" style="color:var(--red)"><b>⚠️ ${L.filter(x=>!x.vf).length} élève${L.filter(x=>!x.vf).length>1?'s':''} non vérifié${L.filter(x=>!x.vf).length>1?'s':''}</b> : inscrits avant le code de classe. Ils doivent entrer le code de la classe ; si vous les connaissez, validez-les vous-même, sinon supprimez leur compte.</p>`:''}
     <p class="small">${remL.length} en remédiation · ${sans} sans évaluation (groupe mis à jour après chaque évaluation du mois)${hk?' · élèves venant d\'autres établissements':''}</p>
     ${L.length?`<div class="tablewrap"><table class="bilan"><tr><th>N°</th><th>Nom</th><th>Prénom</th><th>Pseudo</th>${hk?'<th>École d\'origine</th>':''}<th>Groupe</th><th>Dernière activité</th></tr>
-    ${L.map((x,i)=>{const g=grp(x),p=pos[x.p];return `<tr><td>${i+1}</td><td><b>${esc(x.nom)}</b>${!hk&&!x.vf?` <span class="pill bad noprint" title="Pas encore vérifié avec le code de classe">non vérifié</span> <button class="btn ghost sm noprint" style="padding:2px 8px" data-act="pl-valider" data-p="${esc(x.p)}">Valider</button>`:''}</td><td>${esc(x.prenom)}</td><td>@${esc(x.p)}</td>${hk?`<td>${esc(x.ecole||'—')}</td>`:''}<td>${g?`<span class="pill ${g.c}">${g.k} · ${g.nom}</span> <span class="small">${fmtN(p.sc)}/${p.sur} · ${esc(p.src)}</span>`:'<span class="pill soon">Pas de test</span>'}</td><td class="small">${esc(last[x.p]?last[x.p].d:x.vu||'—')}</td></tr>`}).join('')}</table></div>`:'<p class="small">Aucun élève inscrit dans cette classe pour le moment.</p>'}
+    ${L.map((x,i)=>{const g=grp(x),p=pos[x.p];return `<tr><td>${i+1}</td><td><b>${esc(x.nom)}</b> ${PR.pinAsk===x.p?`<button class="btn sm noprint" style="padding:2px 8px;background:var(--gold);color:#000" data-act="pl-pin" data-p="${esc(x.p)}">Confirmer</button>`:`<button class="btn ghost sm noprint" style="padding:2px 8px" title="Donner un nouveau code secret" data-act="pl-pin-ask" data-p="${esc(x.p)}">🔑</button>`}${!hk&&!x.vf?` <span class="pill bad noprint" title="Pas encore vérifié avec le code de classe">non vérifié</span> <button class="btn ghost sm noprint" style="padding:2px 8px" data-act="pl-valider" data-p="${esc(x.p)}">Valider</button>`:''}</td><td>${esc(x.prenom)}</td><td>@${esc(x.p)}</td>${hk?`<td>${esc(x.ecole||'—')}</td>`:''}<td>${g?`<span class="pill ${g.c}">${g.k} · ${g.nom}</span> <span class="small">${fmtN(p.sc)}/${p.sur} · ${esc(p.src)}</span>`:'<span class="pill soon">Pas de test</span>'}</td><td class="small">${esc(last[x.p]?last[x.p].d:x.vu||'—')}</td></tr>`}).join('')}</table></div>`:'<p class="small">Aucun élève inscrit dans cette classe pour le moment.</p>'}
   </section>
   <div class="row noprint"><button class="btn" data-act="pl-print">🖨 Imprimer la liste</button><button class="btn ghost" data-act="pl-copy">Copier (pour Excel / Sheets)</button></div>
   <section class="card noprint" style="display:flex;flex-direction:column;gap:12px;border-top:6px solid var(--red)">
@@ -4837,13 +4840,17 @@ function profProfsHTML(){
   ${PR.newCode?`<section class="card" style="display:flex;flex-direction:column;gap:10px;border-top:6px solid var(--green)"><p class="eyebrow">Compte créé</p>
     <p>Code de <b>${esc(PR.newCode.nom)}</b> : <b style="font-size:22px;color:var(--ink);letter-spacing:1px">${esc(PR.newCode.code)}</b></p>
     <div class="row"><button class="btn sm" data-act="pp-copy" data-c="${esc(PR.newCode.code)}">Copier le code</button><a class="btn wa sm" target="_blank" rel="noopener" href="${wa(msgProf(PR.newCode))}">Envoyer par WhatsApp</a><button class="btn ghost sm" data-act="pp-ok">Fermer</button></div></section>`:''}
+  ${PR.mdpRes?`<section class="card" role="alert" style="display:flex;flex-direction:column;gap:10px;border-top:6px solid var(--gold)"><p class="eyebrow">🔑 Nouveau mot de passe</p>
+    <p>${esc(PR.mdpRes.nom)} (@${esc(PR.mdpRes.pseudo)}) : <b style="font-size:22px;color:var(--ink);letter-spacing:1px">${esc(PR.mdpRes.mdp)}</b></p>
+    <p class="small">Donnez-le au professeur : il se connecte avec, puis le change dans « Mon compte ».</p>
+    <div class="row"><button class="btn sm" data-act="pp-copy" data-c="${esc(PR.mdpRes.mdp)}">Copier</button><button class="btn ghost sm" data-act="pp-mdp-ok">Fermer</button></div></section>`:''}
   <section class="card" style="display:flex;flex-direction:column;gap:12px"><p class="eyebrow">${N.cible?'Modifier le compte':'Nouveau professeur'}</p>
     <div class="form"><label class="full">Nom du professeur<input data-f="pp.nom" maxlength="60" value="${esc(N.nom||'')}" placeholder="Ex. : M. Faye"></label></div>
     <div><p class="lab">Ses classes</p><div class="cgrid">${cls.map(c=>`<label><input type="checkbox" data-f="pp.classes" value="${c}" ${(N.classes||[]).includes(c)?'checked':''}> ${esc(clsLab(c))}</label>`).join('')}</div></div>
     ${PR.e4?`<p class="err">${esc(PR.e4)}</p>`:''}
     <div class="row"><button class="btn gold" data-act="pp-save" ${PR.busy4?'disabled':''}>${PR.busy4?'Enregistrement…':N.cible?'Enregistrer':'Créer le compte'}</button>${N.cible?'<button class="btn ghost" data-act="pp-new">Annuler</button>':''}</div></section>
   <section class="clist">${P.length?P.map(p=>`<div class="crow" style="border-left-color:var(--${p.actif?'green':'line'})"><div class="ct"><b>${esc(p.nom)}</b><small>${p.pseudo?'@'+esc(p.pseudo)+' · ':''}${esc((p.matieres||[]).map(matCourt).join(' + '))} · Code : <b>${esc(p.code)}</b> · ${esc(p.classes.map(clsLab).join(', '))}${p.actif?'':' · <b>désactivé</b>'}${p.vu?' · vu le '+esc(p.vu):''}</small></div>
-    <div class="row" style="gap:6px"><a class="btn wa sm" target="_blank" rel="noopener" href="${wa(msgProf(p))}">WhatsApp</a><button class="btn ghost sm" data-act="pp-edit" data-c="${esc(p.code)}">Modifier</button><button class="btn ghost sm" data-act="pp-act" data-c="${esc(p.code)}">${p.actif?'Désactiver':'Activer'}</button>${PR.ppDel===p.code?`<button class="btn sm" style="background:#b3261e;color:#fff" data-act="pp-del-ok" data-c="${esc(p.code)}">Supprimer</button><button class="btn ghost sm" data-act="pp-del-no">Annuler</button>`:`<button class="btn ghost sm" data-act="pp-del" data-c="${esc(p.code)}" aria-label="Supprimer">🗑</button>`}</div></div>`).join(''):'<p class="small">Aucun compte professeur pour le moment.</p>'}</section>`}
+    <div class="row" style="gap:6px"><a class="btn wa sm" target="_blank" rel="noopener" href="${wa(msgProf(p))}">WhatsApp</a><button class="btn ghost sm" data-act="pp-edit" data-c="${esc(p.code)}">Modifier</button>${p.pseudo?(PR.mdpAsk===p.code?`<button class="btn sm" style="background:var(--gold);color:#000" data-act="pp-mdp" data-c="${esc(p.code)}">Confirmer</button>`:`<button class="btn ghost sm" data-act="pp-mdp-ask" data-c="${esc(p.code)}">🔑 Mot de passe</button>`):''}<button class="btn ghost sm" data-act="pp-act" data-c="${esc(p.code)}">${p.actif?'Désactiver':'Activer'}</button>${PR.ppDel===p.code?`<button class="btn sm" style="background:#b3261e;color:#fff" data-act="pp-del-ok" data-c="${esc(p.code)}">Supprimer</button><button class="btn ghost sm" data-act="pp-del-no">Annuler</button>`:`<button class="btn ghost sm" data-act="pp-del" data-c="${esc(p.code)}" aria-label="Supprimer">🗑</button>`}</div></div>`).join(''):'<p class="small">Aucun compte professeur pour le moment.</p>'}</section>`}
 
 /* actions de la version 2 */
 function profOp(o,ms){return api(Object.assign({action:'prof',code:PR.code},o),ms)}
@@ -4854,15 +4861,19 @@ function v2Act(a,b){
   if(a==='cp-save'){const c=grabComp(),P=DB.profil;if(S.cpBusy||!P)return;
     if(c.etab!=='K'&&c.etab!=='HK'){S.cpErr='Choisis ton établissement.';render();return}
     if(c.etab==='HK'&&String(c.ecole||'').trim().length<2){S.cpErr="Écris le nom de ton école d'origine.";render();return}
+    if(!/^\d{4}$/.test(String(c.pin||'').trim())){S.cpErr="Écris ton code secret (4 chiffres) pour confirmer que c'est bien toi.";render();return}
     if(c.etab==='K'&&!String(c.code||'').trim()){S.cpErr="Écris le code de ta classe (demande-le à ton professeur de maths).";render();return}
     const d0=P.niveau[0],cl=c.etab==='HK'?d0+'HK':d0+(KLET.includes(String(c.classe||'A').slice(-1))?String(c.classe||'A').slice(-1):'A');
     S.cpBusy=true;S.cpErr='';render();
-    api({action:'completer',pseudo:P.pseudo,etab:c.etab,classe:cl,ecole:String(c.ecole||'').trim(),codeClasse:String(c.code||'').trim()}).then(r=>{S.cpBusy=false;
+    api({action:'completer',pseudo:P.pseudo,etab:c.etab,classe:cl,ecole:String(c.ecole||'').trim(),codeClasse:String(c.code||'').trim(),pin:String(c.pin||'').trim()}).then(r=>{S.cpBusy=false;
       if(r.ok){applySrv(r,true);S.comp=null;toast('Profil complété · '+clsLab(DB.profil.classe))}else S.cpErr=r.erreur||'Enregistrement impossible.';render()});return}
   if(a==='devoirs'){S.view='devoirs';render();window.scrollTo(0,0);loadDevoirs(true);return}
   if(a.startsWith('dv-')){dvAct(a,b);return}
   /* espace professeur */
   if(a==='pt-tab'){PR.tab=b.dataset.t;PR.copie=null;PR.e2=PR.e3=PR.e4=PR.e5='';render();window.scrollTo(0,0);return}
+  if(a==='pl-pin-ask'){PR.pinAsk=b.dataset.p;render();return}
+  if(a==='pl-pin-ok'){PR.pinRes=null;render();return}
+  if(a==='pl-pin'){PR.pinAsk=null;profOp({op:'resetEleve',pseudo:b.dataset.p}).then(r=>{if(r.ok){PR.pinRes=r;window.scrollTo(0,0)}else toast(r.erreur);render()});return}
   if(a==='pl-code-ask'){PR.codeAsk=b.dataset.c;render();return}
   if(a==='pl-code-no'){PR.codeAsk=null;render();return}
   if(a==='pl-code'){const c=b.dataset.c;PR.codeAsk=null;profOp({op:'codeClasse',classe:c}).then(r=>{if(r.ok){PR.codes=r.codes||PR.codes;toast('Nouveau code pour '+clsLab(c)+' : '+r.code)}else toast(r.erreur);render()});return}
@@ -4896,6 +4907,10 @@ function v2Act(a,b){
     profOp({op:'devoir',id:D.id||'',titre:D.titre||'',niveau:D.niv,classes:(D.classes||[]).filter(c=>c[0]===String(D.niv)[0]),chap:D.chap||'',matiere:D.mat||'Mathématiques',enonce:D.enonce||'',sur:D.sur||20,echeance:D.ech||'',image:D.img||'',garderImage:!!(D.oldImg&&!D.img)},90000)
       .then(r=>{PR.busy3=false;if(r.ok){toast(D.id?'Devoir modifié':'Devoir publié : les élèves le voient dans « Mes devoirs »');FM.dv=null;loadProf(PR.code,false)}else{PR.e3=r.erreur;render()}});return}
   if(a==='pp-ok'){PR.newCode=null;render();return}
+  if(a==='pp-mdp-ask'){PR.mdpAsk=b.dataset.c;render();return}
+  if(a==='pp-mdp-ok'){PR.mdpRes=null;render();return}
+  if(a==='pp-mdp'){PR.mdpAsk=null;profOp({op:'resetProf',cible:b.dataset.c}).then(r=>{if(r.ok){PR.mdpRes=r;window.scrollTo(0,0)}else toast(r.erreur);render()});return}
+  if(a==='pp-journal'){profOp({op:'journal'}).then(r=>{if(r.ok){PR.journal=r.journal}else toast(r.erreur);render()});return}
   if(a==='pp-copy'){copyText(b.dataset.c,'Code copié');return}
   if(a==='pp-new'){FM.pp=null;PR.e4='';render();return}
   if(a==='pp-edit'){const p=(PR.profs||[]).find(x=>x.code===b.dataset.c);if(!p)return;FM.pp={cible:p.code,nom:p.nom,classes:p.classes.slice(),actif:p.actif};PR.e4='';render();window.scrollTo(0,0);return}
@@ -4956,7 +4971,12 @@ function profCompteHTML(){const me=PR.me||{};
     <div><p class="lab">Mes matières</p>${chkGrid('mc.matieres',MATIERES,C.matieres)}</div>
     <div><p class="lab">Mes classes</p>${chkGrid('mc.classes',STDCL,C.classes,clsLab)}</div>
     ${PR.e6?`<p class="err">${esc(PR.e6)}</p>`:''}
-    <div class="row"><button class="btn gold" data-act="pm-save" ${PR.busy6?'disabled':''}>${PR.busy6?'Enregistrement…':'Enregistrer'}</button></div></section>`}
+    <div class="row"><button class="btn gold" data-act="pm-save" ${PR.busy6?'disabled':''}>${PR.busy6?'Enregistrement…':'Enregistrer'}</button></div></section>
+  ${me.pseudo?`<section class="card" style="display:flex;flex-direction:column;gap:12px"><p class="eyebrow">🔒 Changer mon mot de passe</p>
+    <div class="form"><label>Mot de passe actuel<input type="password" data-f="pw.ancien" autocomplete="current-password" value="${esc(fval('pw.ancien'))}"></label>
+      <label>Nouveau mot de passe (6 caractères au moins)<input type="password" data-f="pw.nouveau" autocomplete="new-password" value="${esc(fval('pw.nouveau'))}"></label></div>
+    ${PR.e7?`<p class="err">${esc(PR.e7)}</p>`:''}
+    <div class="row"><button class="btn" data-act="pm-mdp">Changer le mot de passe</button></div></section>`:''}`}
 function v21Act(a,b){
   if(a==='role-eleve'){S.role='eleve';render();return}
   if(a==='role-prof'){S.view='prof';PR.eleve=null;const c=profCode();if(c&&!PR.rows&&!PR.loading){PR.auth='code';render();loadProf(c,true);return}PR.auth='connexion';render();window.scrollTo(0,0);return}
@@ -4976,6 +4996,8 @@ function v21Act(a,b){
     PR.loading=true;PR.err='';render();
     api({action:'profInscrire',prenom:I.prenom,nom:I.nom,pseudo:String(I.pseudo).trim().toLowerCase(),mdp:I.mdp,matieres:I.matieres,classes:I.classes,cellule:I.cellule})
       .then(r=>{PR.loading=false;if(r.ok){FM.pi=null;toast('Compte créé · bienvenue '+r.nom);loadProf(r.code,true)}else{PR.err=r.erreur;render()}});return}
+  if(a==='pm-mdp'){const W=FM.pw||{};PR.e7='';if(String(W.nouveau||'').length<6){PR.e7='Le nouveau mot de passe doit avoir au moins 6 caractères.';render();return}
+    profOp({op:'monMdp',ancien:W.ancien||'',nouveau:W.nouveau}).then(r=>{if(r.ok){FM.pw=null;toast('Mot de passe changé')}else PR.e7=r.erreur;render()});return}
   if(a==='pm-save'){const C=FM.mc||{};PR.busy6=true;PR.e6='';render();
     profOp({op:'monCompte',classes:C.classes||[],matieres:C.matieres||[]}).then(r=>{PR.busy6=false;if(r.ok){toast('Compte mis à jour');loadProf(PR.code,false)}else{PR.e6=r.erreur;render()}});return}
 }
@@ -5343,16 +5365,19 @@ function verifCardHTML(){const p=DB.profil;if(!p||p.etab!=='K'||p.verifie!==fals
      :`<p>Entre le <b>code de ta classe</b>, donné en classe par ton professeur de maths. Sans ce code, ton compte risque d'être supprimé.</p>
       <div class="form"><label>Ma classe<select data-f="vfm.classe">${KLET.map(L=>`<option value="${L}" ${fval('vfm.classe',V.classe)===L?'selected':''}>${esc(p.niveau[0])}${L}</option>`).join('')}</select></label>
       <label>Code de ma classe<input data-f="vfm.code" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false" value="${esc(fval('vfm.code'))}" placeholder="Ex. : K7PQM"></label></div>`}
+    <div class="form"><label>Mon code secret (4 chiffres)<input data-f="vfm.pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" value="${esc(fval('vfm.pin'))}" placeholder="••••"></label></div>
     ${S.vfErr?`<p class="err">${esc(S.vfErr)}</p>`:''}
     <div class="row"><button class="btn gold" data-act="vf-save" ${S.vfBusy?'disabled':''}>${S.vfBusy?'Vérification…':V.hk?'Passer en autre établissement':'Vérifier'}</button>
       <button class="btn ghost" data-act="vf-hk">${V.hk?'Je suis bien au '+ECOLE:'Je ne suis pas au '+ECOLE}</button></div></section>`}
 function vfAct(a,b){const P=DB.profil,V=S.vf||(S.vf={});if(!P)return;
   if(a==='vf-hk'){V.hk=!V.hk;S.vfErr='';render();return}
   if(a==='vf-save'){if(S.vfBusy)return;const cl=fval('vfm.classe',V.classe||'A'),code=String(fval('vfm.code')).trim(),ec=String(fval('vfm.ecole')).trim();
+    const pin=String(fval('vfm.pin')).trim();
     if(!V.hk&&!code){S.vfErr='Écris le code de ta classe.';render();return}
+    if(!/^\d{4}$/.test(pin)){S.vfErr='Écris ton code secret (4 chiffres) pour confirmer que c\'est bien toi.';render();return}
     if(V.hk&&ec.length<2){S.vfErr="Écris le nom de ton école.";render();return}
     S.vfBusy=true;S.vfErr='';render();
-    api(V.hk?{action:'verifier',pseudo:P.pseudo,etab:'HK',ecole:ec}:{action:'verifier',pseudo:P.pseudo,etab:'K',classe:cl,codeClasse:code}).then(r=>{S.vfBusy=false;
+    api(V.hk?{action:'verifier',pseudo:P.pseudo,pin,etab:'HK',ecole:ec}:{action:'verifier',pseudo:P.pseudo,pin,etab:'K',classe:cl,codeClasse:code}).then(r=>{S.vfBusy=false;
       if(r.ok){applySrv(r,true);P.verifie=!!r.verifie;save();S.vf=null;FM.vfm=null;toast(V.hk?'Tu es maintenant en '+clsLab(P.classe):'Compte vérifié · '+clsLab(P.classe));loadDevoirs(true)}
       else S.vfErr=r.erreur||'Vérification impossible.';render()});return}
 }
@@ -5372,7 +5397,7 @@ function eleveLoginHTML(){
       <label>Mon code secret (4 chiffres)<input data-f="elg.pin" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="••••" value="${esc(fval('elg.pin'))}"></label></div>
     ${S.elErr?`<p class="err">${esc(S.elErr)}</p>`:''}
     <div class="row"><button class="btn gold" data-act="el-go" ${S.elBusy?'disabled':''}>${S.elBusy?'Connexion…':'Me connecter'}</button><button class="btn ghost" data-act="el-new">Créer un compte</button></div>
-    <p class="small">Code secret oublié ? Demande à ton professeur de maths : il peut supprimer ton compte pour que tu en crées un nouveau.</p></section>`}
+    <p class="small">Code secret oublié ? Demande à ton professeur de maths : il peut te donner un nouveau code secret (bouton 🔑 dans sa liste de classe).</p></section>`}
 function elAct(a){
   if(a==='el-role'){S.role=undefined;S.eauth=null;render();return}
   if(a==='el-new'){S.eauth='new';S.elErr='';render();window.scrollTo(0,0);return}
@@ -5414,6 +5439,19 @@ function histDuServeur(r){const H=r&&r.hist;if(!H||!DB.profil)return false;let c
   Object.entries(H.q||{}).forEach(([cid,b])=>{if(!REG[cid])return;const x=rec(cid);if(x.best===null||b>x.best){x.best=b;ch=true}});
   Object.entries(H.e||{}).forEach(([cid,L])=>{if(!REG[cid])return;const x=rec(cid);for(let i=x.evals.length;i<L.length;i++){x.evals.push({note:L[i][0],items:[],attempt:i+1,eleve:eleve(),classe:DB.profil.classe||'',date:L[i][1],duree:'',serveur:true});ch=true}});
   DB.histAt=Date.now();save();return ch}
+
+/* ---------- déconnexion automatique ---------- */
+const PROF_MAX=2*3600e3,ELEVE_MAX=7*864e5;
+let ACT_T=Date.now();
+function profVu(){try{localStorage.setItem('pdm_prof_vu',String(Date.now()))}catch(e){}}
+function profDeco(msg){PR.rows=null;PR.code='';PR.eleve=null;PR.auth='connexion';try{localStorage.removeItem('pdm_prof_code');localStorage.removeItem('pdm_prof_vu')}catch(e){}if(S.view==='prof')S.view='home';render();if(msg)toast(msg)}
+(function(){try{const c=localStorage.getItem('pdm_prof_code'),v=+localStorage.getItem('pdm_prof_vu')||0;
+  if(c&&(!v||Date.now()-v>PROF_MAX)){localStorage.removeItem('pdm_prof_code');localStorage.removeItem('pdm_prof_vu')}}catch(e){}
+  if(DB.profil&&DB.vu&&Date.now()-DB.vu>ELEVE_MAX){setTimeout(()=>resetPhone("Tu as été déconnecté(e) après 7 jours sans utiliser l'appli. Reconnecte-toi avec ton pseudo et ton code secret."),300)}
+  else if(DB.profil){DB.vu=Date.now();save()}})();
+['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{const n=Date.now();if(PR.code)profVu();if(n-ACT_T<30000){ACT_T=n;return}ACT_T=n;if(DB.profil){DB.vu=n;save()}},{passive:true,capture:true}));
+setInterval(()=>{if(!PR.code)return;if(Date.now()-ACT_T>PROF_MAX)profDeco('Déconnexion automatique après 2 heures sans activité.');else profVu()},60000);
+
 
 /* ---------- actions ---------- */
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')e.target.hidden=true});
@@ -5482,7 +5520,7 @@ document.addEventListener('click',e=>{
       const besoin=r.retour&&!r.etab;
       if(besoin){P.etab='';delete P.etab}
       finish(true);
-      if(besoin&&choix.etab){const nv=P.niveau[0];completeEtab({etab:choix.etab,ecole:choix.ecole,classe:choix.etab==='HK'?nv+'HK':nv+choix.classe.slice(-1)})}});
+      if(besoin&&choix.etab){const nv=P.niveau[0];completeEtab({etab:choix.etab,ecole:choix.ecole,classe:choix.etab==='HK'?nv+'HK':nv+choix.classe.slice(-1),codeClasse:D.code||'',pin})}});
     return;
   }
   else if(a==='level'){if(!canNiv(b.dataset.n)){nivLock(b.dataset.n);return}S.view='level';S.niv=b.dataset.n}
