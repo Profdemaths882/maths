@@ -5441,16 +5441,18 @@ function histDuServeur(r){const H=r&&r.hist;if(!H||!DB.profil)return false;let c
   DB.histAt=Date.now();save();return ch}
 
 /* ---------- déconnexion automatique ---------- */
-const PROF_MAX=2*3600e3,ELEVE_MAX=7*864e5;
+const PROF_MAX=15*60e3,ELEVE_MAX=30*60e3;
 let ACT_T=Date.now();
 function profVu(){try{localStorage.setItem('pdm_prof_vu',String(Date.now()))}catch(e){}}
 function profDeco(msg){PR.rows=null;PR.code='';PR.eleve=null;PR.auth='connexion';try{localStorage.removeItem('pdm_prof_code');localStorage.removeItem('pdm_prof_vu')}catch(e){}if(S.view==='prof')S.view='home';render();if(msg)toast(msg)}
 (function(){try{const c=localStorage.getItem('pdm_prof_code'),v=+localStorage.getItem('pdm_prof_vu')||0;
   if(c&&(!v||Date.now()-v>PROF_MAX)){localStorage.removeItem('pdm_prof_code');localStorage.removeItem('pdm_prof_vu')}}catch(e){}
-  if(DB.profil&&DB.vu&&Date.now()-DB.vu>ELEVE_MAX){setTimeout(()=>resetPhone("Tu as été déconnecté(e) après 7 jours sans utiliser l'appli. Reconnecte-toi avec ton pseudo et ton code secret."),300)}
+  if(DB.profil&&DB.vu&&Date.now()-DB.vu>ELEVE_MAX){setTimeout(()=>resetPhone("Tu as été déconnecté(e) après 30 minutes sans activité. Reconnecte-toi avec ton pseudo et ton code secret : tes résultats sont gardés."),300)}
   else if(DB.profil){DB.vu=Date.now();save()}})();
 ['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{const n=Date.now();if(PR.code)profVu();if(n-ACT_T<30000){ACT_T=n;return}ACT_T=n;if(DB.profil){DB.vu=n;save()}},{passive:true,capture:true}));
-setInterval(()=>{if(!PR.code)return;if(Date.now()-ACT_T>PROF_MAX)profDeco('Déconnexion automatique après 2 heures sans activité.');else profVu()},60000);
+setInterval(()=>{const inactif=Date.now()-ACT_T;
+  if(PR.code){if(inactif>PROF_MAX)profDeco('Déconnexion automatique après 15 minutes sans activité.');else profVu();return}
+  if(DB.profil&&DB.profil.pseudo&&inactif>ELEVE_MAX)resetPhone("Tu as été déconnecté(e) après 30 minutes sans activité. Reconnecte-toi avec ton pseudo et ton code secret : tes résultats sont gardés.")},60000);
 
 
 /* ---------- actions ---------- */
