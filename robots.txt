@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://racineprofdemaths.com/sitemap.xml
