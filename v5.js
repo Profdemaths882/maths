@@ -23,7 +23,7 @@ var SX_CSS = `.sx{position:relative;isolation:isolate;background:#FFFDF8;color:#
 .sx-qcm{width:100%;border-collapse:separate;border-spacing:0;font-size:.97em;border:1.5px solid #1E3F8A;border-radius:10px;overflow:hidden}.sx-qcm th,.sx-qcm td{border-bottom:1px solid #C9D3EA;border-right:1px solid #C9D3EA;padding:6px 8px;vertical-align:middle}
 .sx-qcm th{background:#1E3F8A!important;color:#fff!important;font-family:Arial,sans-serif;font-weight:700;font-size:13px;text-align:center;letter-spacing:0;text-transform:none}.sx-qcm th:nth-child(n+3){background:#C9962B!important}
 .sx-qcm tbody tr:nth-child(odd) td{background:rgba(234,240,252,.75)}.sx-qcm tbody tr:nth-child(even) td{background:rgba(255,255,255,.55)}.sx td{color:#1b1b1b}.sx-qcm td.n{text-align:center;width:30px;font-weight:700;color:#1E3F8A}.sx-qcm td.r{text-align:center}
-.sx-cols{column-gap:22px}
+.sx-cols{column-gap:22px}.sx-niv{column-span:all;-webkit-column-span:all;display:flex;align-items:center;gap:10px;margin:6px 0 14px;font-family:Arial,sans-serif;font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--c)}.sx-niv::before,.sx-niv::after{content:'';flex:1;height:2px;background:var(--c);opacity:.45}.sx-niv span{background:var(--c);color:#fff;padding:3px 12px;border-radius:99px}.sx-st{font-size:12px;letter-spacing:1px;color:#FFE08A}
 .sx-cor{margin-top:20px}.sx-cor h3{margin:0 auto 14px;max-width:320px;text-align:center;color:#fff;background:linear-gradient(135deg,#1F7A5A,#2E9E76);border-radius:12px;padding:8px;font-size:1.15em;letter-spacing:2px;box-shadow:0 4px 12px rgba(31,122,90,.3)}
 .sx-cor .sx-ex{--c:#1F7A5A;--cs:rgba(31,122,90,.18)}.sx .sx-cor .sx-cols{column-count:1!important}.sx-ok{display:inline-block;min-width:28px;text-align:center;font-weight:700;color:#fff;background:#1F7A5A;border-radius:6px;margin-right:6px}
 .sx .katex{font-size:1.05em}.sx .katex-display{margin:.45em 0;overflow-x:auto;overflow-y:hidden}
@@ -34,9 +34,9 @@ var SX_CSS = `.sx{position:relative;isolation:isolate;background:#FFFDF8;color:#
 function sxFeuille(o) {
   /* o = {cid, niv, titre, logo, data:{qcm,ex}, prof:bool, corr:null|{qcm:[[ok,jHTML]],ex:[html]}} */
   var d = o.data, L = ['A', 'B', 'C'];
-  var box = function (n, b, body, meta) {
+  var box = function (n, b, body, meta, niv) {
     var c = SX_BL[b] || '#1E3F8A';
-    return '<div class="sx-ex" style="--c:' + c + ';--cs:' + c + '33"><div class="sx-eh"><b>Exercice ' + n + '</b>' + (b ? '<span class="sx-tag">' + b + '</span>' : '') + (meta ? '<span class="sx-meta">' + meta + '</span>' : '') + '</div><div class="sx-eb">' + body + '</div></div>';
+    return '<div class="sx-ex" style="--c:' + c + ';--cs:' + c + '33"><div class="sx-eh"><b>Exercice ' + n + '</b>' + (niv ? '<span class="sx-st">' + '★★★'.slice(0, niv) + '☆☆☆'.slice(0, 3 - niv) + '</span>' : '') + (b ? '<span class="sx-tag">' + b + '</span>' : '') + (meta ? '<span class="sx-meta">' + meta + '</span>' : '') + '</div><div class="sx-eb">' + body + '</div></div>';
   };
   var h = '<div class="sx">' + (o.logo ? '<div class="sx-wm" style="background-image:url(' + o.logo + ')"></div>' : '')
     + '<div class="sx-head"><div>République du Sénégal<br><small>Un Peuple – Un But – Une Foi</small><br>Ministère de l\'Éducation nationale<br>IA de Dakar · IEF de Dakar-Plateau<br><b>CEM John Fitzgerald Kennedy</b></div>'
@@ -48,7 +48,8 @@ function sxFeuille(o) {
     + '<table class="sx-qcm"><thead><tr><th>N°</th><th>Énoncés</th><th>Réponse A</th><th>Réponse B</th><th>Réponse C</th></tr></thead><tbody>'
     + d.qcm.map(function (q, i) { return '<tr><td class="n">' + (i + 1) + '</td><td class="q">' + q.q + '</td>' + q.r.map(function (r, j) { return '<td class="r" data-l="' + L[j] + '">' + r + '</td>'; }).join('') + '</tr>'; }).join('')
     + '</tbody></table>');
-  h += '<div class="sx-cols">' + d.ex.map(function (x, i) { return box(i + 2, x.b, x.e, o.prof ? x.s : ''); }).join('') + '</div>';
+  var NV = { 1: ['Niveau 1 · Je m\'entraîne', '#1E3F8A'], 2: ['Niveau 2 · J\'approfondis', '#6B3FA0'], 3: [/^3e/.test(o.cid) ? 'Niveau 3 · Type devoir et BFEM' : 'Niveau 3 · Type devoir et composition', '#B4442F'] }, cur = 0;
+  h += '<div class="sx-cols">' + d.ex.map(function (x, i) { var t = ''; if (x.n && x.n !== cur) { cur = x.n; t = '<div class="sx-niv" style="--c:' + NV[cur][1] + '"><span>' + NV[cur][0] + '</span></div>'; } return t + box(i + 2, x.b, x.e, o.prof ? x.s : '', x.n); }).join('') + '</div>';
   if (o.corr) {
     h += '<div class="sx-cor"><h3>CORRIGÉ</h3>'
       + box(1, 'Corrigé', o.corr.qcm.map(function (c, i) { return (i + 1) + ') <span class="sx-ok">' + c[0] + '</span>' + (c[1] ? ' ' + c[1] : ''); }).join('<br>'))
@@ -56,7 +57,7 @@ function sxFeuille(o) {
   }
   return h + '</div>';
 }
-if (typeof module !== 'undefined') module.exports = { SX_CSS: SX_CSS, sxFeuille: sxFeuille };
+
 const LISTE='6e-DEC,6e-ADD,6e-SOU,6e-GEO,6e-RAN,5e-PUI,5e-SYM,5e-MUL,5e-ANG,4e-RAT,4e-DIS,4e-CAL,3e-RAC,3e-THA,3e-EQI'.split(',');
 const isProf=()=>{try{return !!(PR&&PR.code)}catch(e){return false}};
 const isAdmin=()=>{try{return !!(PR&&PR.code&&PR.me&&PR.me.admin)}catch(e){return false}};
@@ -65,7 +66,7 @@ let cssOk=false,kx=null;
 function needCss(){if(cssOk)return;cssOk=true;const l=document.createElement('link');l.rel='stylesheet';l.href='td/katex/katex.min.css';document.head.appendChild(l);
   const s=document.createElement('style');s.textContent=SX_CSS+'.sx-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}';document.head.appendChild(s)}
 function katexJs(){return kx||(kx=new Promise((ok,ko)=>{const s=document.createElement('script');s.src='td/katex/katex.min.js';s.onload=()=>ok(window.katex);s.onerror=()=>{kx=null;ko()};document.head.appendChild(s)}))}
-const prep=t=>{t=t.replace(/(\d),(?=\d)/g,'$1{,}');let k=0;return t.replace(/(\\left|\\right)?\|/g,(m,lr)=>lr?m:(k++%2?'\\rvert ':'\\lvert '))};
+const prep=t=>{t=t.replace(/(\d),(?=\d)/g,'$1{,}').replace(/\\begin\{array\}\{[^}]*\}/g,m=>m.replace(/\|/g,'\u0001'));let k=0;return t.replace(/(\\left|\\right)?\|/g,(m,lr)=>lr?m:(k++%2?'\\rvert ':'\\lvert ')).replace(/\u0001/g,'|')};
 function conv(K,s){const r=(t,d)=>{try{return K.renderToString(prep(t),{displayMode:d,throwOnError:false,strict:'ignore'})}catch(e){return t}};
   return s.replace(/\$\$([\s\S]+?)\$\$/g,(_,t)=>r(t,true)).replace(/\$([^$]+?)\$/g,(_,t)=>r(t,false))}
 const rr=cid=>{if(S.cid===cid&&S.tab==='td')render()};
