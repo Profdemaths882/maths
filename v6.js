@@ -52,7 +52,7 @@ function charger(){if(MT.load||!isProf())return;MT.load=true;
 function vide(){const me=PR.me||{};return {id:'',titre:'',lien:'',date:isoAuj(),debut:'',fin:'',classes:[],matiere:(me.matieres||['Mathématiques'])[0]||'Mathématiques',consigne:''}}
 function ongletProf(){if(MT.prof===null)charger();const F=MT.f||(MT.f=vide()),me=PR.me||{};
   const ms=me.admin?['Mathématiques','Physique-Chimie','SVT']:(me.matieres||['Mathématiques']);
-  const cls=(typeof profClasses==='function'?profClasses():me.classes||[]).filter(c=>/^[3-6](?:[A-H]|HK)$/.test(c));
+  const cls=(typeof profClasses==='function'?profClasses():me.classes||[]).filter(c=>/^(?:[3-6](?:[A-H]|HK)|2[LS]|1(?:L|S1|S2)|T(?:L|S1|S2))$/.test(c));
   const auj=isoAuj(),L=(MT.prof||[]).slice();
   return `<section class="card" style="display:flex;flex-direction:column;gap:12px;border-top:6px solid #1a73e8">
     <p class="eyebrow">🎥 Cours en ligne · Google Meet</p>

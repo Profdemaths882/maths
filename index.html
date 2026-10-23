@@ -4518,7 +4518,7 @@ function reviewHTML(E){
 const KLET=['A','B','C'];
 /* anciennes classes D à H (avant la règle A, B, C = Kennedy) : ce sont des élèves hors Kennedy, rangés en HK */
 const normCl=c=>{c=String(c||'').toUpperCase().replace(/\s+/g,'');return /^[3-6][D-H]$/.test(c)?c[0]+'HK':c};
-const clsLab=c=>{c=normCl(c);return /^[3-6]HK$/.test(c)?c[0]+'e HK':c};
+const clsLab=c=>{c=normCl(c);return /^[3-6]HK$/.test(c)?c[0]+'e HK':((window.LYLAB&&window.LYLAB[c])||c)};
 const STDCL=['6','5','4','3'].flatMap(n=>KLET.concat('HK').map(L=>n+L));
 const clsSort=(a,b)=>{const o=x=>(6-(+String(x)[0]||0))*100+(/HK$/.test(x)?90:String(x).charCodeAt(1)||0);return o(a)-o(b)||String(a).localeCompare(String(b))};
 const fmtN=v=>String(v==null?'':v).replace('.',',');
@@ -4955,7 +4955,7 @@ function profAuthHTML(){const t=PR.auth||(profCode()?'code':'connexion');
       <label>Mot de passe (6 caractères au moins)<input type="password" data-f="pi.mdp" value="${esc(I.mdp||'')}" autocomplete="new-password"></label>
       <label class="full">Confirme le mot de passe<input type="password" data-f="pi.mdp2" value="${esc(I.mdp2||'')}" autocomplete="new-password"></label></div>
     <div><p class="lab">Mes matières</p>${chkGrid('pi.matieres',MATIERES,I.matieres)}</div>
-    <div><p class="lab">Mes classes</p>${chkGrid('pi.classes',STDCL,I.classes,clsLab)}</div>
+    <div><p class="lab">Mes classes</p>${chkGrid('pi.classes',STDCL.concat(window.LYCL||[]),I.classes,clsLab)}</div>
     <div class="form"><label class="full">Code de la cellule de mathématiques<input data-f="pi.cellule" value="${esc(I.cellule||'')}" autocapitalize="none" placeholder="Demande-le à M. Thiam"></label></div>
     <button class="btn gold" data-act="pa-reg" ${PR.loading?'disabled':''}>${PR.loading?'Création…':'Créer mon compte professeur'}</button>`;
   else {const c=profCode();body=`<label class="form full" style="display:flex;flex-direction:column;gap:6px;font-weight:700;color:var(--ink)">Code d'accès (administrateur ou code reçu)
@@ -4972,7 +4972,7 @@ function profCompteHTML(){const me=PR.me||{};
   return `<div class="chap-head"><h1>Mon compte</h1><p class="small">Pseudo : <b>@${esc(me.pseudo||'—')}</b>. Coche les classes où tu enseignes et tes matières : tu ne verras que ces classes.</p></div>
   <section class="card" style="display:flex;flex-direction:column;gap:12px">
     <div><p class="lab">Mes matières</p>${chkGrid('mc.matieres',MATIERES,C.matieres)}</div>
-    <div><p class="lab">Mes classes</p>${chkGrid('mc.classes',STDCL,C.classes,clsLab)}</div>
+    <div><p class="lab">Mes classes</p>${chkGrid('mc.classes',STDCL.concat(window.LYCL||[]),C.classes,clsLab)}</div>
     ${PR.e6?`<p class="err">${esc(PR.e6)}</p>`:''}
     <div class="row"><button class="btn gold" data-act="pm-save" ${PR.busy6?'disabled':''}>${PR.busy6?'Enregistrement…':'Enregistrer'}</button></div></section>
   ${me.pseudo?`<section class="card" style="display:flex;flex-direction:column;gap:12px"><p class="eyebrow">🔒 Changer mon mot de passe</p>
@@ -5585,3 +5585,4 @@ render();
 <script src="v4.js"></script>
 <script src="v5.js"></script>
 <script src="v6.js"></script>
+<script src="v7.js"></script>
